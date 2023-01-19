@@ -1,14 +1,12 @@
-/// AST
-pub type Ast = Vec<Expr>;
-
-pub enum Atom {
-    Symbol(String),
-    Number(f64),
+#[derive(Debug, PartialEq)]
+pub enum Ast {
+    Atom(LispAtom),
+    List(Vec<Ast>),
 }
 
-pub type List = Vec<Expr>;
-
-pub enum Expr {
-    Atom(Atom),
-    List(List),
+#[derive(Debug, PartialEq)]
+pub enum LispAtom {
+    Symbol(String),
+    String(String),
+    Number(f64),
 }
