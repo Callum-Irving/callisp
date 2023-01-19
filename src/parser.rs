@@ -1,7 +1,7 @@
 use crate::ast;
 
 use nom::branch::alt;
-use nom::bytes::complete::{tag, take_while};
+use nom::bytes::complete::take_while;
 use nom::character::complete::{char, digit1, multispace0, multispace1};
 use nom::combinator::{map, map_res};
 use nom::multi::separated_list0;
@@ -20,8 +20,11 @@ pub fn parse_expr(input: &str) -> IResult<&str, ast::Ast> {
 fn parse_list(input: &str) -> IResult<&str, ast::Ast> {
     // whitespace separated expressions
     map(
-        // multispace1
-        delimited(char('('), separated_list0(tag(" "), parse_atom), char(')')),
+        delimited(
+            char('('),
+            separated_list0(multispace1, parse_atom),
+            char(')'),
+        ),
         |exprs| ast::Ast::List(exprs),
     )(input)
 }
@@ -31,7 +34,7 @@ fn parse_atom(input: &str) -> IResult<&str, ast::Ast> {
 }
 
 fn parse_num(input: &str) -> IResult<&str, ast::Ast> {
-    // digit1 + opt(seq('.' digit1))
+    // TODO: Parse floating points numbers
     map(
         map_res(alt((digit1, multispace1)), |s: &str| s.parse::<f64>()),
         |num| ast::Ast::Atom(ast::LispAtom::Number(num)),
