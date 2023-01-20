@@ -1,5 +1,6 @@
-use crate::env;
+use crate::env::{self, Environment};
 use crate::error::LispError;
+use crate::eval;
 use dyn_clone::DynClone;
 
 use std::fmt::{Debug, Display};
@@ -78,6 +79,7 @@ impl Clone for Box<dyn LispCallable> {
     }
 }
 
+#[derive(Debug, Clone)]
 pub enum FunctionArity {
     AtLeast(usize),
     Exactly(usize),
@@ -108,4 +110,35 @@ pub trait LispCallable: Debug + DynClone {
     fn arity(&self) -> &FunctionArity;
 
     fn call(&self, args: Vec<Ast>, env: &mut env::Environment) -> Result<Ast, LispError>;
+}
+
+#[derive(Debug, Clone)]
+pub struct LispLambda {
+    arity: FunctionArity,
+    bindings: Vec<String>,
+    body: Ast,
+}
+
+impl LispLambda {
+    pub fn new(arity: FunctionArity, bindings: Vec<String>, body: Ast) -> Self {
+        Self {
+            arity,
+            bindings,
+            body,
+        }
+    }
+}
+
+impl LispCallable for LispLambda {
+    fn arity(&self) -> &FunctionArity {
+        &self.arity
+    }
+
+    fn call(&self, args: Vec<Ast>, env: &mut env::Environment) -> Result<Ast, LispError> {
+        // Create bindings
+        let mut env = Environment::with_binds(env, self.bindings.iter().cloned().zip(args));
+
+        // Evaluate in new environment
+        eval::eval_expr(self.body.clone(), &mut env)
+    }
 }

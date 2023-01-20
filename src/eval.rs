@@ -1,10 +1,38 @@
-use crate::ast::{Ast, LispAtom};
+use crate::ast::{Ast, FunctionArity, LispAtom, LispLambda};
 use crate::env::Environment;
 use crate::error::LispError;
 
 pub fn eval_expr(input: Ast, env: &mut Environment) -> Result<Ast, LispError> {
     Ok(match input {
-        Ast::List(list) => eval_list(list, env)?,
+        Ast::List(list) => match list.get(0) {
+            Some(Ast::Atom(LispAtom::Symbol(symbol))) => match symbol.as_str() {
+                "lambda" => {
+                    // items[1] = bindings
+                    // convert Vec<Ast> to Vec<String>
+                    let bindings: Vec<_> = if let Ast::List(bindings) = &list[1] {
+                        bindings
+                            .iter()
+                            .map(|ast| match ast {
+                                Ast::Atom(LispAtom::Symbol(symbol)) => Ok(symbol.clone()),
+                                _ => Err(LispError::TypeError),
+                            })
+                            .collect::<Result<_, LispError>>()?
+                    } else {
+                        return Err(LispError::TypeError);
+                    };
+
+                    // items[2] = body
+                    let body = list[2].clone();
+
+                    let lambda =
+                        LispLambda::new(FunctionArity::Exactly(bindings.len()), bindings, body);
+
+                    Ast::Function(Box::new(lambda))
+                }
+                _ => eval_list(list, env)?,
+            },
+            _ => eval_list(list, env)?,
+        },
         Ast::Atom(LispAtom::Symbol(symbol)) => eval_symbol(&symbol, env)?, // Symbols get looked up in environment
         Ast::Atom(_) => input,     // Other atoms return themselves
         Ast::Function(_) => input, // Functions return themselves

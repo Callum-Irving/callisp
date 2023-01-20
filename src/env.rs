@@ -9,6 +9,15 @@ pub struct Environment<'a> {
 }
 
 impl<'a> Environment<'a> {
+    pub fn with_binds<I: IntoIterator<Item = (String, Ast)>>(
+        outer: &'a Environment<'a>,
+        bindings: I,
+    ) -> Self {
+        Self {
+            outer: Some(outer),
+            bindings: bindings.into_iter().collect(),
+        }
+    }
     pub fn with_outer(outer: &'a Environment<'a>) -> Self {
         Self {
             outer: Some(outer),
