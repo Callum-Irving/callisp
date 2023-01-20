@@ -41,4 +41,8 @@ impl<'a> Environment<'a> {
             None
         }
     }
+
+    pub fn bind(&mut self, binding: String, value: Ast) {
+        self.bindings.insert(binding, value);
+    }
 }

@@ -29,6 +29,17 @@ pub fn eval_expr(input: Ast, env: &mut Environment) -> Result<Ast, LispError> {
 
                     Ast::Function(Box::new(lambda))
                 }
+                "define" => {
+                    let Some(Ast::Atom(LispAtom::Symbol(binding))) = list.get(1).cloned() else {
+                        return Err(LispError::TypeError);
+                    };
+
+                    let value = eval_expr(list[2].clone(), env)?;
+
+                    env.bind(binding, value.clone());
+
+                    value
+                }
                 _ => eval_list(list, env)?,
             },
             _ => eval_list(list, env)?,

@@ -7,7 +7,7 @@ mod error;
 mod eval;
 mod parser;
 
-use ast::{Ast, FunctionArity, LispAtom, LispLambda};
+use ast::Ast;
 use error::LispError;
 
 // Evaluating:
