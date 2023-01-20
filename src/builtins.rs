@@ -3,6 +3,7 @@ use crate::env::Environment;
 use crate::error::LispError;
 use crate::eval;
 
+use lazy_static::lazy_static;
 use std::collections::HashMap;
 
 pub fn builtins_hashmap() -> HashMap<String, Ast> {
@@ -36,6 +37,9 @@ fn to_list_of_nums(args: Vec<Ast>) -> Result<Vec<f64>, LispError> {
         .collect::<Result<Vec<f64>, LispError>>()
 }
 
+lazy_static! {
+    static ref ONE_OR_ZERO: FunctionArity = FunctionArity::Multi(vec![0, 1]);
+}
 const EXACTLY_1: FunctionArity = FunctionArity::Exactly(1);
 const AT_LEAST_1: FunctionArity = FunctionArity::AtLeast(1);
 
@@ -44,7 +48,7 @@ struct LispExit;
 
 impl LispCallable for LispExit {
     fn arity(&self) -> &FunctionArity {
-        &EXACTLY_1
+        &ONE_OR_ZERO
     }
 
     fn call(&self, args: Vec<Ast>, _env: &mut Environment) -> Result<Ast, LispError> {

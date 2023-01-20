@@ -23,6 +23,7 @@ impl PartialEq for Ast {
                 Ast::List(other) => items == other,
                 _ => false,
             },
+            // TODO: Maybe two functions are equal if they have the same body?
             Ast::Function(_) => false,
         }
     }
@@ -83,6 +84,7 @@ impl Clone for Box<dyn LispCallable> {
 pub enum FunctionArity {
     AtLeast(usize),
     Exactly(usize),
+    Multi(Vec<usize>),
 }
 
 impl FunctionArity {
@@ -97,6 +99,13 @@ impl FunctionArity {
             }
             Self::Exactly(num_params) => {
                 if num_args == *num_params {
+                    Ok(())
+                } else {
+                    Err(LispError::TypeError)
+                }
+            }
+            Self::Multi(options) => {
+                if options.contains(&num_args) {
                     Ok(())
                 } else {
                     Err(LispError::TypeError)

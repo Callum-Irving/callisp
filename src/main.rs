@@ -1,4 +1,4 @@
-use std::io;
+use std::io::{self, Write};
 
 mod ast;
 mod builtins;
@@ -21,6 +21,8 @@ use error::LispError;
 // If special form, run special form
 
 fn read() -> Result<Ast, LispError> {
+    print!("callums-lisp> ");
+    io::stdout().flush().map_err(|_| LispError::IOError)?;
     let mut buf = String::new();
     io::stdin()
         .read_line(&mut buf)
