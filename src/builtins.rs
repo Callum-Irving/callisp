@@ -1,6 +1,7 @@
 use crate::ast::{Ast, FunctionArity, LispAtom, LispCallable};
 use crate::env::Environment;
 use crate::error::LispError;
+use crate::eval;
 
 use std::collections::HashMap;
 
@@ -10,6 +11,7 @@ pub fn builtins_hashmap() -> HashMap<String, Ast> {
         ("-".to_string(), Ast::Function(Box::new(LispSub))),
         ("*".to_string(), Ast::Function(Box::new(LispMul))),
         ("/".to_string(), Ast::Function(Box::new(LispDiv))),
+        ("eval".to_string(), Ast::Function(Box::new(LispEval))),
         ("exit".to_string(), Ast::Function(Box::new(LispExit))),
     ])
 }
@@ -34,11 +36,11 @@ fn to_list_of_nums(args: Vec<Ast>) -> Result<Vec<f64>, LispError> {
         .collect::<Result<Vec<f64>, LispError>>()
 }
 
-#[derive(Debug, Clone)]
-struct LispExit;
-
 const EXACTLY_1: FunctionArity = FunctionArity::Exactly(1);
 const AT_LEAST_1: FunctionArity = FunctionArity::AtLeast(1);
+
+#[derive(Debug, Clone)]
+struct LispExit;
 
 impl LispCallable for LispExit {
     fn arity(&self) -> &FunctionArity {
@@ -52,6 +54,19 @@ impl LispCallable for LispExit {
         };
 
         std::process::exit(code);
+    }
+}
+
+#[derive(Debug, Clone)]
+struct LispEval;
+
+impl LispCallable for LispEval {
+    fn arity(&self) -> &FunctionArity {
+        &EXACTLY_1
+    }
+
+    fn call(&self, args: Vec<Ast>, env: &mut crate::env::Environment) -> Result<Ast, LispError> {
+        eval::eval_expr(take_first(args)?, env)
     }
 }
 
