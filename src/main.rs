@@ -1,7 +1,14 @@
 use std::io;
 
 mod ast;
+mod builtins;
+mod env;
+mod error;
+mod eval;
 mod parser;
+
+use ast::{Ast, LispAtom};
+use error::LispError;
 
 // Evaluating:
 //
@@ -13,31 +20,41 @@ mod parser;
 // If function, run function
 // If special form, run special form
 
-fn read() -> io::Result<ast::Ast> {
+fn read() -> Result<Ast, LispError> {
     let mut buf = String::new();
-    io::stdin().read_line(&mut buf)?;
+    io::stdin()
+        .read_line(&mut buf)
+        .map_err(|_| LispError::IOError)?;
     let buf = buf.trim_end().to_string();
 
     // TODO: Process input
-    let expr = parser::parse_expr(&buf);
+    let expr = parser::parse_expr(&buf)
+        .map_err(|_| LispError::ParseError)?
+        .1;
 
-    Ok(expr.expect("Parse failed").1)
+    Ok(expr)
 }
 
-fn eval(input: ast::Ast) -> String {
+fn eval(input: Ast, env: &mut env::Environment) -> Result<Ast, LispError> {
     // input
 
-    todo!()
+    // Special forms:
+    // - cond
+    // - lambda
+    // - define (needs to be at top level?)
+
+    eval::eval_expr(input, env)
 }
 
-fn print(input: String) {
-    println!("{}", input);
+fn print(input: Ast) {
+    println!("{:?}", input);
 }
 
 fn main() {
+    let mut env = env::Environment::outer_new();
     loop {
         let input = read().unwrap();
-        let result = eval(input);
+        let result = eval(input, &mut env).unwrap();
         print(result);
     }
 }

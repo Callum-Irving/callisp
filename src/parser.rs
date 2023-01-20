@@ -14,7 +14,8 @@ pub fn parse_expr(input: &str) -> IResult<&str, ast::Ast> {
     // if first char =='[', parse vec
     // else parse atom
 
-    delimited(multispace0, alt((parse_list, parse_atom)), multispace0)(input)
+    // delimited(multispace0, alt((parse_list, parse_atom)), multispace0)(input)
+    alt((parse_list, parse_atom))(input)
 }
 
 fn parse_list(input: &str) -> IResult<&str, ast::Ast> {
@@ -22,7 +23,7 @@ fn parse_list(input: &str) -> IResult<&str, ast::Ast> {
     map(
         delimited(
             char('('),
-            separated_list0(multispace1, parse_atom),
+            separated_list0(multispace1, parse_expr),
             char(')'),
         ),
         |exprs| ast::Ast::List(exprs),
@@ -75,11 +76,14 @@ mod tests {
 
     #[test]
     fn parse_expr_works() {
-        let (_, ast) = parse_expr("(one two 3)").expect("parse expr failed");
+        let (_, ast) = parse_expr("(one two (f 3))").expect("parse expr failed");
         let expected = ast::Ast::List(vec![
             ast::Ast::Atom(ast::LispAtom::Symbol("one".to_string())),
             ast::Ast::Atom(ast::LispAtom::Symbol("two".to_string())),
-            ast::Ast::Atom(ast::LispAtom::Number(3.0)),
+            ast::Ast::List(vec![
+                ast::Ast::Atom(ast::LispAtom::Symbol("f".to_string())),
+                ast::Ast::Atom(ast::LispAtom::Number(3.0)),
+            ]),
         ]);
         assert_eq!(ast, expected);
     }
