@@ -22,18 +22,36 @@ impl PartialEq for Ast {
                 Ast::List(other) => items == other,
                 _ => false,
             },
-            Ast::Function(func) => false,
+            Ast::Function(_) => false,
         }
     }
 
     fn ne(&self, other: &Self) -> bool {
-        todo!("implement not equal for ast")
+        !self.eq(other)
     }
 }
 
 impl Display for Ast {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        todo!("implement display for ast")
+        match self {
+            Self::Atom(atom) => write!(f, "{}", atom),
+            Self::List(list) => {
+                write!(f, "(")?;
+
+                // Display a space-separated list of inner items
+                let mut list = list.iter();
+                if let Some(ast) = list.next() {
+                    write!(f, "{}", ast)?;
+
+                    for ast in list {
+                        write!(f, " {}", ast)?;
+                    }
+                }
+
+                write!(f, ")")
+            }
+            Self::Function(_) => write!(f, "<function>"),
+        }
     }
 }
 
@@ -44,12 +62,50 @@ pub enum LispAtom {
     Number(f64),
 }
 
+impl Display for LispAtom {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Symbol(symbol) => write!(f, "{}", symbol),
+            Self::String(s) => write!(f, "{}", s),
+            Self::Number(num) => write!(f, "{}", num),
+        }
+    }
+}
+
 impl Clone for Box<dyn LispCallable> {
     fn clone(&self) -> Self {
         dyn_clone::clone_box(&**self)
     }
 }
 
+pub enum FunctionArity {
+    AtLeast(usize),
+    Exactly(usize),
+}
+
+impl FunctionArity {
+    pub fn check_arity(&self, num_args: usize) -> Result<(), LispError> {
+        match self {
+            Self::AtLeast(num_params) => {
+                if num_args >= *num_params {
+                    Ok(())
+                } else {
+                    Err(LispError::TypeError)
+                }
+            }
+            Self::Exactly(num_params) => {
+                if num_args == *num_params {
+                    Ok(())
+                } else {
+                    Err(LispError::TypeError)
+                }
+            }
+        }
+    }
+}
+
 pub trait LispCallable: Debug + DynClone {
+    fn arity(&self) -> &FunctionArity;
+
     fn call(&self, args: Vec<Ast>, env: &mut env::Environment) -> Result<Ast, LispError>;
 }

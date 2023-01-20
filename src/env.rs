@@ -9,6 +9,12 @@ pub struct Environment<'a> {
 }
 
 impl<'a> Environment<'a> {
+    pub fn with_outer(outer: &'a Environment<'a>) -> Self {
+        Self {
+            outer: Some(outer),
+            bindings: HashMap::new(),
+        }
+    }
     pub fn outer_new() -> Self {
         Self {
             outer: None,
@@ -17,6 +23,13 @@ impl<'a> Environment<'a> {
     }
 
     pub fn get(&self, name: &str) -> Option<Ast> {
-        self.bindings.get(name).map(|ast| ast.clone())
+        let in_self = self.bindings.get(name).map(|ast| ast.clone());
+        if in_self.is_some() {
+            in_self
+        } else if let Some(outer) = self.outer {
+            outer.get(name)
+        } else {
+            None
+        }
     }
 }

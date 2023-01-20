@@ -7,7 +7,7 @@ mod error;
 mod eval;
 mod parser;
 
-use ast::{Ast, LispAtom};
+use ast::Ast;
 use error::LispError;
 
 // Evaluating:
@@ -47,7 +47,7 @@ fn eval(input: Ast, env: &mut env::Environment) -> Result<Ast, LispError> {
 }
 
 fn print(input: Ast) {
-    println!("{:?}", input);
+    println!("{}", input);
 }
 
 fn main() {

@@ -1,4 +1,4 @@
-use crate::ast::{Ast, LispAtom, LispCallable};
+use crate::ast::{Ast, FunctionArity, LispAtom, LispCallable};
 use crate::env::Environment;
 use crate::error::LispError;
 
@@ -10,7 +10,19 @@ pub fn builtins_hashmap() -> HashMap<String, Ast> {
         ("-".to_string(), Ast::Function(Box::new(LispSub))),
         ("*".to_string(), Ast::Function(Box::new(LispMul))),
         ("/".to_string(), Ast::Function(Box::new(LispDiv))),
+        ("exit".to_string(), Ast::Function(Box::new(LispExit))),
     ])
+}
+
+fn ast_to_num(ast: Ast) -> Result<f64, LispError> {
+    match ast {
+        Ast::Atom(LispAtom::Number(num)) => Ok(num),
+        _ => Err(LispError::TypeError),
+    }
+}
+
+fn take_first(items: Vec<Ast>) -> Result<Ast, LispError> {
+    items.into_iter().next().ok_or(LispError::TypeError)
 }
 
 fn to_list_of_nums(args: Vec<Ast>) -> Result<Vec<f64>, LispError> {
@@ -23,11 +35,40 @@ fn to_list_of_nums(args: Vec<Ast>) -> Result<Vec<f64>, LispError> {
 }
 
 #[derive(Debug, Clone)]
+struct LispExit;
+
+const EXACTLY_1: FunctionArity = FunctionArity::Exactly(1);
+const AT_LEAST_1: FunctionArity = FunctionArity::AtLeast(1);
+
+impl LispCallable for LispExit {
+    fn arity(&self) -> &FunctionArity {
+        &EXACTLY_1
+    }
+
+    fn call(&self, args: Vec<Ast>, _env: &mut Environment) -> Result<Ast, LispError> {
+        let code = match args.into_iter().next() {
+            Some(code) => ast_to_num(code)? as i32,
+            None => 0,
+        };
+
+        std::process::exit(code);
+    }
+}
+
+#[derive(Debug, Clone)]
 struct LispAdd;
 
 impl LispCallable for LispAdd {
+    fn arity(&self) -> &FunctionArity {
+        &AT_LEAST_1
+    }
+
     fn call(&self, args: Vec<Ast>, _env: &mut Environment) -> Result<Ast, LispError> {
-        let sum = to_list_of_nums(args)?.into_iter().sum();
+        let sum = if args.len() > 1 {
+            to_list_of_nums(args)?.into_iter().sum()
+        } else {
+            take_first(args).and_then(ast_to_num)?
+        };
 
         Ok(Ast::Atom(LispAtom::Number(sum)))
     }
@@ -37,11 +78,19 @@ impl LispCallable for LispAdd {
 struct LispSub;
 
 impl LispCallable for LispSub {
+    fn arity(&self) -> &FunctionArity {
+        &AT_LEAST_1
+    }
+
     fn call(&self, args: Vec<Ast>, _env: &mut Environment) -> Result<Ast, LispError> {
-        let difference = to_list_of_nums(args)?
-            .into_iter()
-            .reduce(|acc, num| acc - num)
-            .ok_or(LispError::TypeError)?;
+        let difference = if args.len() > 1 {
+            to_list_of_nums(args)?
+                .into_iter()
+                .reduce(|acc, num| acc - num)
+                .ok_or(LispError::TypeError)?
+        } else {
+            -1.0 * take_first(args).and_then(ast_to_num)?
+        };
 
         Ok(Ast::Atom(LispAtom::Number(difference)))
     }
@@ -51,6 +100,10 @@ impl LispCallable for LispSub {
 struct LispMul;
 
 impl LispCallable for LispMul {
+    fn arity(&self) -> &FunctionArity {
+        &AT_LEAST_1
+    }
+
     fn call(&self, args: Vec<Ast>, _env: &mut Environment) -> Result<Ast, LispError> {
         let product = to_list_of_nums(args)?
             .into_iter()
@@ -65,11 +118,19 @@ impl LispCallable for LispMul {
 struct LispDiv;
 
 impl LispCallable for LispDiv {
+    fn arity(&self) -> &FunctionArity {
+        &AT_LEAST_1
+    }
+
     fn call(&self, args: Vec<Ast>, _env: &mut Environment) -> Result<Ast, LispError> {
-        let quotient = to_list_of_nums(args)?
-            .into_iter()
-            .reduce(|acc, num| acc * num)
-            .ok_or(LispError::TypeError)?;
+        let quotient = if args.len() > 1 {
+            to_list_of_nums(args)?
+                .into_iter()
+                .reduce(|acc, num| acc * num)
+                .ok_or(LispError::TypeError)?
+        } else {
+            1.0 / take_first(args).and_then(ast_to_num)?
+        };
 
         Ok(Ast::Atom(LispAtom::Number(quotient)))
     }

@@ -2,10 +2,11 @@ use crate::ast;
 
 use nom::branch::alt;
 use nom::bytes::complete::take_while;
-use nom::character::complete::{char, digit1, multispace0, multispace1};
-use nom::combinator::{map, map_res};
+use nom::character::complete::{char, multispace0, multispace1, satisfy};
+use nom::combinator::{map, map_res, recognize};
 use nom::multi::separated_list0;
-use nom::sequence::delimited;
+use nom::number::complete::recognize_float;
+use nom::sequence::{delimited, preceded, terminated, tuple};
 use nom::IResult;
 
 pub fn parse_expr(input: &str) -> IResult<&str, ast::Ast> {
@@ -14,17 +15,16 @@ pub fn parse_expr(input: &str) -> IResult<&str, ast::Ast> {
     // if first char =='[', parse vec
     // else parse atom
 
-    // delimited(multispace0, alt((parse_list, parse_atom)), multispace0)(input)
-    alt((parse_list, parse_atom))(input)
+    preceded(multispace0, alt((parse_list, parse_atom)))(input)
 }
 
 fn parse_list(input: &str) -> IResult<&str, ast::Ast> {
     // whitespace separated expressions
     map(
         delimited(
-            char('('),
+            terminated(char('('), multispace0),
             separated_list0(multispace1, parse_expr),
-            char(')'),
+            preceded(multispace0, char(')')),
         ),
         |exprs| ast::Ast::List(exprs),
     )(input)
@@ -35,18 +35,21 @@ fn parse_atom(input: &str) -> IResult<&str, ast::Ast> {
 }
 
 fn parse_num(input: &str) -> IResult<&str, ast::Ast> {
-    // TODO: Parse floating points numbers
+    // TODO: Use some sort of multi-precision number instead of f64
     map(
-        map_res(alt((digit1, multispace1)), |s: &str| s.parse::<f64>()),
+        map_res(recognize_float, |s: &str| s.parse::<f64>()),
         |num| ast::Ast::Atom(ast::LispAtom::Number(num)),
     )(input)
 }
 
 fn parse_symbol(input: &str) -> IResult<&str, ast::Ast> {
-    // TODO: Make sure first character isn't a digit
-    map(take_while(is_symbol_character), |s: &str| {
-        ast::Ast::Atom(ast::LispAtom::Symbol(s.to_string()))
-    })(input)
+    map(
+        recognize(tuple((
+            satisfy(|c| is_symbol_character(c) && !c.is_digit(10)),
+            take_while(is_symbol_character),
+        ))),
+        |s: &str| ast::Ast::Atom(ast::LispAtom::Symbol(s.to_string())),
+    )(input)
 }
 
 fn is_symbol_character(c: char) -> bool {
@@ -58,15 +61,28 @@ mod tests {
     use super::*;
 
     #[test]
+    fn parse_symbol_works() {
+        parse_symbol("1").expect_err("parsed '1' as symbol");
+
+        let (_, ast) = parse_symbol("a123-five?").expect("parse symbol failed");
+        let expected = ast::Ast::Atom(ast::LispAtom::Symbol("a123-five?".to_string()));
+        assert_eq!(ast, expected);
+    }
+
+    #[test]
     fn parse_atom_works() {
         let (_, ast) = parse_atom("1").expect("parse atom failed");
         let expected = ast::Ast::Atom(ast::LispAtom::Number(1.0));
+        assert_eq!(ast, expected);
+
+        let (_, ast) = parse_atom("1E10").expect("parse atom failed");
+        let expected = ast::Ast::Atom(ast::LispAtom::Number(1E10));
         assert_eq!(ast, expected);
     }
 
     #[test]
     fn parse_list_works() {
-        let (_, ast) = parse_list("(1 2)").expect("parse list failed");
+        let (_, ast) = parse_list("(1 2\n)").expect("parse list failed");
         let expected = ast::Ast::List(vec![
             ast::Ast::Atom(ast::LispAtom::Number(1.0)),
             ast::Ast::Atom(ast::LispAtom::Number(2.0)),
@@ -76,7 +92,7 @@ mod tests {
 
     #[test]
     fn parse_expr_works() {
-        let (_, ast) = parse_expr("(one two (f 3))").expect("parse expr failed");
+        let (_, ast) = parse_expr(" (one   two (f\n3)\n)").expect("parse expr failed");
         let expected = ast::Ast::List(vec![
             ast::Ast::Atom(ast::LispAtom::Symbol("one".to_string())),
             ast::Ast::Atom(ast::LispAtom::Symbol("two".to_string())),
