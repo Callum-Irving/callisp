@@ -32,7 +32,7 @@ impl<'a> Environment<'a> {
     }
 
     pub fn get(&self, name: &str) -> Option<Ast> {
-        let in_self = self.bindings.get(name).map(|ast| ast.clone());
+        let in_self = self.bindings.get(name).cloned();
         if in_self.is_some() {
             in_self
         } else if let Some(outer) = self.outer {

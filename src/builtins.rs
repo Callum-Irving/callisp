@@ -20,19 +20,19 @@ pub fn builtins_hashmap() -> HashMap<String, Ast> {
 fn ast_to_num(ast: Ast) -> Result<f64, LispError> {
     match ast {
         Ast::Atom(LispAtom::Number(num)) => Ok(num),
-        _ => Err(LispError::TypeError),
+        _ => Err(LispError::Type),
     }
 }
 
 fn take_first(items: Vec<Ast>) -> Result<Ast, LispError> {
-    items.into_iter().next().ok_or(LispError::TypeError)
+    items.into_iter().next().ok_or(LispError::Type)
 }
 
 fn to_list_of_nums(args: Vec<Ast>) -> Result<Vec<f64>, LispError> {
     args.iter()
         .map(|ast| match ast {
             Ast::Atom(LispAtom::Number(num)) => Ok(*num),
-            _ => Err(LispError::TypeError),
+            _ => Err(LispError::Type),
         })
         .collect::<Result<Vec<f64>, LispError>>()
 }
@@ -106,7 +106,7 @@ impl LispCallable for LispSub {
             to_list_of_nums(args)?
                 .into_iter()
                 .reduce(|acc, num| acc - num)
-                .ok_or(LispError::TypeError)?
+                .ok_or(LispError::Type)?
         } else {
             -1.0 * take_first(args).and_then(ast_to_num)?
         };
@@ -127,7 +127,7 @@ impl LispCallable for LispMul {
         let product = to_list_of_nums(args)?
             .into_iter()
             .reduce(|acc, num| acc * num)
-            .ok_or(LispError::TypeError)?;
+            .ok_or(LispError::Type)?;
 
         Ok(Ast::Atom(LispAtom::Number(product)))
     }
@@ -146,7 +146,7 @@ impl LispCallable for LispDiv {
             to_list_of_nums(args)?
                 .into_iter()
                 .reduce(|acc, num| acc * num)
-                .ok_or(LispError::TypeError)?
+                .ok_or(LispError::Type)?
         } else {
             1.0 / take_first(args).and_then(ast_to_num)?
         };

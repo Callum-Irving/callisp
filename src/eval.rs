@@ -14,11 +14,11 @@ pub fn eval_expr(input: Ast, env: &mut Environment) -> Result<Ast, LispError> {
                             .iter()
                             .map(|ast| match ast {
                                 Ast::Atom(LispAtom::Symbol(symbol)) => Ok(symbol.clone()),
-                                _ => Err(LispError::TypeError),
+                                _ => Err(LispError::Type),
                             })
                             .collect::<Result<_, LispError>>()?
                     } else {
-                        return Err(LispError::TypeError);
+                        return Err(LispError::Type);
                     };
 
                     // items[2] = body
@@ -31,7 +31,7 @@ pub fn eval_expr(input: Ast, env: &mut Environment) -> Result<Ast, LispError> {
                 }
                 "define" => {
                     let Some(Ast::Atom(LispAtom::Symbol(binding))) = list.get(1).cloned() else {
-                        return Err(LispError::TypeError);
+                        return Err(LispError::Type);
                     };
 
                     let value = eval_expr(list[2].clone(), env)?;
@@ -51,7 +51,6 @@ pub fn eval_expr(input: Ast, env: &mut Environment) -> Result<Ast, LispError> {
 }
 
 pub fn eval_list(list: Vec<Ast>, env: &mut Environment) -> Result<Ast, LispError> {
-    debug_assert!(list.len() > 0);
     // eval first item of list
     // should be Ast::Function
     // call the function on rest(list)
@@ -59,7 +58,7 @@ pub fn eval_list(list: Vec<Ast>, env: &mut Environment) -> Result<Ast, LispError
 
     let func = list
         .next()
-        .ok_or(LispError::TypeError)
+        .ok_or(LispError::Type)
         .and_then(|ast| eval_expr(ast, env))?;
 
     let args: Vec<Ast> = list
@@ -70,11 +69,11 @@ pub fn eval_list(list: Vec<Ast>, env: &mut Environment) -> Result<Ast, LispError
         func.arity().check_arity(args.len())?;
         func.call(args, env)
     } else {
-        Err(LispError::TypeError)
+        Err(LispError::Type)
     }
 }
 
 pub fn eval_symbol(symbol: &str, env: &mut Environment) -> Result<Ast, LispError> {
     // Look up symbol in environment
-    env.get(symbol).ok_or(LispError::TypeError)
+    env.get(symbol).ok_or(LispError::Type)
 }

@@ -26,7 +26,7 @@ fn parse_list(input: &str) -> IResult<&str, ast::Ast> {
             separated_list0(multispace1, parse_expr),
             preceded(multispace0, char(')')),
         ),
-        |exprs| ast::Ast::List(exprs),
+        ast::Ast::List,
     )(input)
 }
 
@@ -45,7 +45,7 @@ fn parse_num(input: &str) -> IResult<&str, ast::Ast> {
 fn parse_symbol(input: &str) -> IResult<&str, ast::Ast> {
     map(
         recognize(tuple((
-            satisfy(|c| is_symbol_character(c) && !c.is_digit(10)),
+            satisfy(|c| is_symbol_character(c) && !c.is_ascii_digit()),
             take_while(is_symbol_character),
         ))),
         |s: &str| ast::Ast::Atom(ast::LispAtom::Symbol(s.to_string())),

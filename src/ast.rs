@@ -27,10 +27,6 @@ impl PartialEq for Ast {
             Ast::Function(_) => false,
         }
     }
-
-    fn ne(&self, other: &Self) -> bool {
-        !self.eq(other)
-    }
 }
 
 impl Display for Ast {
@@ -94,21 +90,21 @@ impl FunctionArity {
                 if num_args >= *num_params {
                     Ok(())
                 } else {
-                    Err(LispError::TypeError)
+                    Err(LispError::Type)
                 }
             }
             Self::Exactly(num_params) => {
                 if num_args == *num_params {
                     Ok(())
                 } else {
-                    Err(LispError::TypeError)
+                    Err(LispError::Type)
                 }
             }
             Self::Multi(options) => {
                 if options.contains(&num_args) {
                     Ok(())
                 } else {
-                    Err(LispError::TypeError)
+                    Err(LispError::Type)
                 }
             }
         }
