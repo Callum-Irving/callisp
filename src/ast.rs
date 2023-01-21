@@ -10,6 +10,7 @@ pub enum Ast {
     Atom(LispAtom),
     List(Vec<Ast>),
     Function(Box<dyn LispCallable>),
+    Unspecified,
 }
 
 impl PartialEq for Ast {
@@ -25,6 +26,7 @@ impl PartialEq for Ast {
             },
             // TODO: Maybe two functions are equal if they have the same body?
             Ast::Function(_) => false,
+            Ast::Unspecified => false,
         }
     }
 }
@@ -49,6 +51,7 @@ impl Display for Ast {
                 write!(f, ")")
             }
             Self::Function(_) => write!(f, "<function>"),
+            Self::Unspecified => Ok(()), // unspecified doesn't display anything
         }
     }
 }

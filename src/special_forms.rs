@@ -41,9 +41,9 @@ pub fn define(args: Vec<Ast>, env: &mut Environment) -> Result<Ast, LispError> {
 
     let value = eval::eval_expr(args.next().ok_or(LispError::Type)?, env)?;
 
-    env.bind(binding, value.clone());
+    env.bind(binding, value);
 
-    Ok(value)
+    Ok(Ast::Unspecified)
 }
 
 /// Create a lambda function.
