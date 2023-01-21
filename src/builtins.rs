@@ -1,7 +1,7 @@
 use crate::ast::{Ast, FunctionArity, LispAtom, LispCallable};
 use crate::env::Environment;
 use crate::error::LispError;
-use crate::eval;
+use crate::{eval, parser};
 
 use lazy_static::lazy_static;
 use std::collections::HashMap;
@@ -14,12 +14,20 @@ pub fn builtins_hashmap() -> HashMap<String, Ast> {
         ("/".to_string(), Ast::Function(Box::new(LispDiv))),
         ("eval".to_string(), Ast::Function(Box::new(LispEval))),
         ("exit".to_string(), Ast::Function(Box::new(LispExit))),
+        ("use".to_string(), Ast::Function(Box::new(LispUse))),
     ])
 }
 
 fn ast_to_num(ast: Ast) -> Result<f64, LispError> {
     match ast {
         Ast::Atom(LispAtom::Number(num)) => Ok(num),
+        _ => Err(LispError::Type),
+    }
+}
+
+fn ast_to_string(ast: Ast) -> Result<String, LispError> {
+    match ast {
+        Ast::Atom(LispAtom::String(string)) => Ok(string),
         _ => Err(LispError::Type),
     }
 }
@@ -40,8 +48,8 @@ fn to_list_of_nums(args: Vec<Ast>) -> Result<Vec<f64>, LispError> {
 lazy_static! {
     static ref ONE_OR_ZERO: FunctionArity = FunctionArity::Multi(vec![0, 1]);
 }
-const EXACTLY_1: FunctionArity = FunctionArity::Exactly(1);
-const AT_LEAST_1: FunctionArity = FunctionArity::AtLeast(1);
+const EXACTLY_ONE: FunctionArity = FunctionArity::Exactly(1);
+const AT_LEAST_ONE: FunctionArity = FunctionArity::AtLeast(1);
 
 #[derive(Debug, Clone)]
 struct LispExit;
@@ -66,7 +74,7 @@ struct LispEval;
 
 impl LispCallable for LispEval {
     fn arity(&self) -> &FunctionArity {
-        &EXACTLY_1
+        &EXACTLY_ONE
     }
 
     fn call(&self, args: Vec<Ast>, env: &mut crate::env::Environment) -> Result<Ast, LispError> {
@@ -79,7 +87,7 @@ struct LispAdd;
 
 impl LispCallable for LispAdd {
     fn arity(&self) -> &FunctionArity {
-        &AT_LEAST_1
+        &AT_LEAST_ONE
     }
 
     fn call(&self, args: Vec<Ast>, _env: &mut Environment) -> Result<Ast, LispError> {
@@ -98,7 +106,7 @@ struct LispSub;
 
 impl LispCallable for LispSub {
     fn arity(&self) -> &FunctionArity {
-        &AT_LEAST_1
+        &AT_LEAST_ONE
     }
 
     fn call(&self, args: Vec<Ast>, _env: &mut Environment) -> Result<Ast, LispError> {
@@ -120,7 +128,7 @@ struct LispMul;
 
 impl LispCallable for LispMul {
     fn arity(&self) -> &FunctionArity {
-        &AT_LEAST_1
+        &AT_LEAST_ONE
     }
 
     fn call(&self, args: Vec<Ast>, _env: &mut Environment) -> Result<Ast, LispError> {
@@ -138,7 +146,7 @@ struct LispDiv;
 
 impl LispCallable for LispDiv {
     fn arity(&self) -> &FunctionArity {
-        &AT_LEAST_1
+        &AT_LEAST_ONE
     }
 
     fn call(&self, args: Vec<Ast>, _env: &mut Environment) -> Result<Ast, LispError> {
@@ -152,5 +160,29 @@ impl LispCallable for LispDiv {
         };
 
         Ok(Ast::Atom(LispAtom::Number(quotient)))
+    }
+}
+
+#[derive(Debug, Clone)]
+struct LispUse;
+
+impl LispCallable for LispUse {
+    fn arity(&self) -> &FunctionArity {
+        &EXACTLY_ONE
+    }
+
+    fn call(&self, args: Vec<Ast>, env: &mut Environment) -> Result<Ast, LispError> {
+        let file = take_first(args).and_then(ast_to_string)?;
+        // convert file to string
+        let contents = std::fs::read_to_string(file).map_err(|_| LispError::IO)?;
+        let mut to_parse = contents.as_str();
+        let mut res = Ast::List(vec![]);
+
+        while let Ok((rest, expr)) = parser::parse_expr(to_parse) {
+            to_parse = rest;
+            res = eval::eval_expr(expr, env)?;
+        }
+
+        Ok(res)
     }
 }

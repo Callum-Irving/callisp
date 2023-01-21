@@ -31,7 +31,7 @@ fn parse_list(input: &str) -> IResult<&str, ast::Ast> {
 }
 
 fn parse_atom(input: &str) -> IResult<&str, ast::Ast> {
-    alt((parse_num, parse_symbol))(input)
+    alt((parse_num, parse_string, parse_symbol))(input)
 }
 
 fn parse_num(input: &str) -> IResult<&str, ast::Ast> {
@@ -39,6 +39,13 @@ fn parse_num(input: &str) -> IResult<&str, ast::Ast> {
     map(
         map_res(recognize_float, |s: &str| s.parse::<f64>()),
         |num| ast::Ast::Atom(ast::LispAtom::Number(num)),
+    )(input)
+}
+
+fn parse_string(input: &str) -> IResult<&str, ast::Ast> {
+    map(
+        delimited(char('"'), take_while(|c| c != '"'), char('"')),
+        |s: &str| ast::Ast::Atom(ast::LispAtom::String(s.to_string())),
     )(input)
 }
 
