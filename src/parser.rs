@@ -1,7 +1,7 @@
 use crate::ast;
 
 use nom::branch::alt;
-use nom::bytes::complete::take_while;
+use nom::bytes::complete::{tag, take_while};
 use nom::character::complete::{char, multispace0, multispace1, satisfy};
 use nom::combinator::{map, map_res, recognize};
 use nom::multi::separated_list0;
@@ -31,7 +31,7 @@ fn parse_list(input: &str) -> IResult<&str, ast::Ast> {
 }
 
 fn parse_atom(input: &str) -> IResult<&str, ast::Ast> {
-    alt((parse_num, parse_string, parse_symbol))(input)
+    alt((parse_num, parse_string, parse_bool, parse_symbol))(input)
 }
 
 fn parse_num(input: &str) -> IResult<&str, ast::Ast> {
@@ -46,6 +46,13 @@ fn parse_string(input: &str) -> IResult<&str, ast::Ast> {
     map(
         delimited(char('"'), take_while(|c| c != '"'), char('"')),
         |s: &str| ast::Ast::Atom(ast::LispAtom::String(s.to_string())),
+    )(input)
+}
+
+fn parse_bool(input: &str) -> IResult<&str, ast::Ast> {
+    map(
+        alt((map(tag("true"), |_| true), map(tag("false"), |_| false))),
+        |b: bool| ast::Ast::Atom(ast::LispAtom::Bool(b)),
     )(input)
 }
 

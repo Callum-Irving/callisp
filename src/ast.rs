@@ -60,6 +60,7 @@ impl Display for Ast {
 pub enum LispAtom {
     Symbol(String),
     String(String),
+    Bool(bool),
     Number(f64),
 }
 
@@ -69,6 +70,7 @@ impl Display for LispAtom {
             Self::Symbol(symbol) => write!(f, "{}", symbol),
             Self::String(s) => write!(f, "\"{}\"", s),
             Self::Number(num) => write!(f, "{}", num),
+            Self::Bool(b) => write!(f, "{}", b),
         }
     }
 }

@@ -6,16 +6,26 @@ use crate::{eval, parser};
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 
+/// A macro to make the next function more readable.
+macro_rules! fn_box {
+    ($func:ident) => {
+        Ast::Function(Box::new($func))
+    };
+}
+
 pub fn builtins_hashmap() -> HashMap<String, Ast> {
     HashMap::from([
-        ("+".to_string(), Ast::Function(Box::new(LispAdd))),
-        ("-".to_string(), Ast::Function(Box::new(LispSub))),
-        ("*".to_string(), Ast::Function(Box::new(LispMul))),
-        ("/".to_string(), Ast::Function(Box::new(LispDiv))),
-        ("eval".to_string(), Ast::Function(Box::new(LispEval))),
-        ("exit".to_string(), Ast::Function(Box::new(LispExit))),
-        ("use".to_string(), Ast::Function(Box::new(LispUse))),
-        ("putstr".to_string(), Ast::Function(Box::new(LispPutStr))),
+        ("+".to_string(), fn_box!(LispAdd)),
+        ("-".to_string(), fn_box!(LispSub)),
+        ("*".to_string(), fn_box!(LispMul)),
+        ("/".to_string(), fn_box!(LispDiv)),
+        ("eval".to_string(), fn_box!(LispEval)),
+        ("exit".to_string(), fn_box!(LispExit)),
+        ("use".to_string(), fn_box!(LispUse)),
+        ("putstr".to_string(), fn_box!(LispPutStr)),
+        ("readline".to_string(), fn_box!(LispReadLine)),
+        ("use".to_string(), fn_box!(LispUse)),
+        ("equal?".to_string(), fn_box!(LispEqual)),
     ])
 }
 
@@ -49,8 +59,10 @@ fn to_list_of_nums(args: Vec<Ast>) -> Result<Vec<f64>, LispError> {
 lazy_static! {
     static ref ONE_OR_ZERO: FunctionArity = FunctionArity::Multi(vec![0, 1]);
 }
+const EXACTLY_ZERO: FunctionArity = FunctionArity::Exactly(0);
 const EXACTLY_ONE: FunctionArity = FunctionArity::Exactly(1);
 const AT_LEAST_ONE: FunctionArity = FunctionArity::AtLeast(1);
+const AT_LEAST_TWO: FunctionArity = FunctionArity::AtLeast(2);
 
 #[derive(Debug, Clone)]
 struct LispExit;
@@ -200,5 +212,45 @@ impl LispCallable for LispPutStr {
         let string = take_first(args).and_then(ast_to_string)?;
         println!("{}", string);
         Ok(Ast::Unspecified)
+    }
+}
+
+#[derive(Debug, Clone)]
+struct LispReadLine;
+
+impl LispCallable for LispReadLine {
+    fn arity(&self) -> &FunctionArity {
+        &EXACTLY_ZERO
+    }
+
+    fn call(&self, _args: Vec<Ast>, _env: &mut Environment) -> Result<Ast, LispError> {
+        let mut buf = String::new();
+        std::io::stdin()
+            .read_line(&mut buf)
+            .map_err(|_| LispError::IO)?;
+        // TODO: This might break compatibility with windows
+        buf.pop(); // Remove trailing '\n'
+        Ok(Ast::Atom(LispAtom::String(buf)))
+    }
+}
+
+#[derive(Debug, Clone)]
+struct LispEqual;
+
+impl LispCallable for LispEqual {
+    fn arity(&self) -> &FunctionArity {
+        &AT_LEAST_TWO
+    }
+
+    fn call(&self, args: Vec<Ast>, _env: &mut Environment) -> Result<Ast, LispError> {
+        let mut iter = args.into_iter();
+        let first = iter.next().ok_or(LispError::Type)?;
+        for arg in iter {
+            if arg != first {
+                return Ok(Ast::Atom(LispAtom::Bool(false)));
+            }
+        }
+
+        Ok(Ast::Atom(LispAtom::Bool(true)))
     }
 }
