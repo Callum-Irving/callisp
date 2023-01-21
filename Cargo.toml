@@ -2,6 +2,13 @@
 name = "callisp"
 version = "0.1.0"
 edition = "2021"
+license = "GPL-2.0"
+keywords = ["lisp", "wasm", "language", "interpreter"]
+categories = ["compilers"]
+description = "A lisp interpreter that can be used with WASM."
+repository = "https://github.com/Callum-Irving/callisp"
+readme = "README.md"
+homepage = "https://callumirving.pages.dev/projects/callisp/"
 
 [lib]
 name = "callisp"
