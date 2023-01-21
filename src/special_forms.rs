@@ -12,8 +12,9 @@ type SpecialFormFunction = fn(Vec<Ast>, &mut Environment) -> Result<Ast, LispErr
 lazy_static! {
     pub static ref SPECIAL_FORMS: HashMap<&'static str, SpecialFormFunction> = {
         let mut map: HashMap<&'static str, SpecialFormFunction> = HashMap::new();
+        map.insert("λ", lambda);
         map.insert("lambda", lambda);
-        map.insert("define", define);
+        map.insert("def", define);
         map
     };
 }

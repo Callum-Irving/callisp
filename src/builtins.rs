@@ -15,6 +15,7 @@ pub fn builtins_hashmap() -> HashMap<String, Ast> {
         ("eval".to_string(), Ast::Function(Box::new(LispEval))),
         ("exit".to_string(), Ast::Function(Box::new(LispExit))),
         ("use".to_string(), Ast::Function(Box::new(LispUse))),
+        ("putstr".to_string(), Ast::Function(Box::new(LispPutStr))),
     ])
 }
 
@@ -184,5 +185,20 @@ impl LispCallable for LispUse {
         }
 
         Ok(res)
+    }
+}
+
+#[derive(Debug, Clone)]
+struct LispPutStr;
+
+impl LispCallable for LispPutStr {
+    fn arity(&self) -> &FunctionArity {
+        &EXACTLY_ONE
+    }
+
+    fn call(&self, args: Vec<Ast>, _env: &mut Environment) -> Result<Ast, LispError> {
+        let string = take_first(args).and_then(ast_to_string)?;
+        println!("{}", string);
+        Ok(Ast::Unspecified)
     }
 }

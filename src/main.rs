@@ -51,7 +51,9 @@ fn eval(input: Ast, env: &mut env::Environment) -> Result<Ast, LispError> {
 }
 
 fn print(input: Ast) {
-    println!("{}", input);
+    if !matches!(input, Ast::Unspecified) {
+        println!("{}", input);
+    }
 }
 
 fn main() {
