@@ -145,7 +145,7 @@ impl LispCallable for LispDiv {
         let quotient = if args.len() > 1 {
             to_list_of_nums(args)?
                 .into_iter()
-                .reduce(|acc, num| acc * num)
+                .reduce(|acc, num| acc / num)
                 .ok_or(LispError::Type)?
         } else {
             1.0 / take_first(args).and_then(ast_to_num)?
