@@ -1,53 +1,23 @@
-use crate::ast::{Ast, FunctionArity, LispAtom, LispLambda};
+use crate::ast::{Ast, LispAtom};
 use crate::env::Environment;
 use crate::error::LispError;
+use crate::special_forms::{eval_special_form, SPECIAL_FORMS};
 
 pub fn eval_expr(input: Ast, env: &mut Environment) -> Result<Ast, LispError> {
-    Ok(match input {
+    match input {
         Ast::List(list) => match list.get(0) {
-            Some(Ast::Atom(LispAtom::Symbol(symbol))) => match symbol.as_str() {
-                "lambda" => {
-                    // items[1] = bindings
-                    // convert Vec<Ast> to Vec<String>
-                    let bindings: Vec<_> = if let Ast::List(bindings) = &list[1] {
-                        bindings
-                            .iter()
-                            .map(|ast| match ast {
-                                Ast::Atom(LispAtom::Symbol(symbol)) => Ok(symbol.clone()),
-                                _ => Err(LispError::Type),
-                            })
-                            .collect::<Result<_, LispError>>()?
-                    } else {
-                        return Err(LispError::Type);
-                    };
-
-                    // items[2] = body
-                    let body = list[2].clone();
-
-                    let lambda =
-                        LispLambda::new(FunctionArity::Exactly(bindings.len()), bindings, body);
-
-                    Ast::Function(Box::new(lambda))
+            Some(Ast::Atom(LispAtom::Symbol(symbol))) => {
+                if let Some(special_form) = SPECIAL_FORMS.get(symbol.as_str()) {
+                    eval_special_form(list, env, special_form)
+                } else {
+                    eval_list(list, env)
                 }
-                "define" => {
-                    let Some(Ast::Atom(LispAtom::Symbol(binding))) = list.get(1).cloned() else {
-                        return Err(LispError::Type);
-                    };
-
-                    let value = eval_expr(list[2].clone(), env)?;
-
-                    env.bind(binding, value.clone());
-
-                    value
-                }
-                _ => eval_list(list, env)?,
-            },
-            _ => eval_list(list, env)?,
+            }
+            _ => eval_list(list, env),
         },
-        Ast::Atom(LispAtom::Symbol(symbol)) => eval_symbol(&symbol, env)?, // Symbols get looked up in environment
-        Ast::Atom(_) => input,     // Other atoms return themselves
-        Ast::Function(_) => input, // Functions return themselves
-    })
+        Ast::Atom(LispAtom::Symbol(symbol)) => eval_symbol(&symbol, env), // Symbols get looked up in environment
+        _ => Ok(input), // Atoms and functions return themselves
+    }
 }
 
 pub fn eval_list(list: Vec<Ast>, env: &mut Environment) -> Result<Ast, LispError> {

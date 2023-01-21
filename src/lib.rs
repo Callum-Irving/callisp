@@ -4,6 +4,7 @@ pub mod env;
 pub mod error;
 pub mod eval;
 pub mod parser;
+pub mod special_forms;
 
 use wasm_bindgen::prelude::*;
 
