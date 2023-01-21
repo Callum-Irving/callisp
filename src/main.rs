@@ -1,14 +1,20 @@
 use std::io::{self, Write};
 
-mod ast;
-mod builtins;
-mod env;
-mod error;
-mod eval;
-mod parser;
+// mod ast;
+// mod builtins;
+// mod env;
+// mod error;
+// mod eval;
+// mod parser;
+//
+// use ast::Ast;
+// use error::LispError;
 
-use ast::Ast;
-use error::LispError;
+use callisp::ast::Ast;
+use callisp::env;
+use callisp::error::LispError;
+use callisp::eval;
+use callisp::parser;
 
 // Evaluating:
 //
@@ -21,7 +27,7 @@ use error::LispError;
 // If special form, run special form
 
 fn read() -> Result<Ast, LispError> {
-    print!("callums-lisp> ");
+    print!("callisp> ");
     io::stdout().flush().map_err(|_| LispError::IO)?;
     let mut buf = String::new();
     io::stdin().read_line(&mut buf).map_err(|_| LispError::IO)?;

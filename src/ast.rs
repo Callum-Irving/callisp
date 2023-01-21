@@ -1,4 +1,4 @@
-use crate::env::{self, Environment};
+use crate::env::Environment;
 use crate::error::LispError;
 use crate::eval;
 use dyn_clone::DynClone;
@@ -114,7 +114,7 @@ impl FunctionArity {
 pub trait LispCallable: Debug + DynClone {
     fn arity(&self) -> &FunctionArity;
 
-    fn call(&self, args: Vec<Ast>, env: &mut env::Environment) -> Result<Ast, LispError>;
+    fn call(&self, args: Vec<Ast>, env: &mut Environment) -> Result<Ast, LispError>;
 }
 
 #[derive(Debug, Clone)]
@@ -139,11 +139,15 @@ impl LispCallable for LispLambda {
         &self.arity
     }
 
-    fn call(&self, args: Vec<Ast>, env: &mut env::Environment) -> Result<Ast, LispError> {
+    fn call(&self, args: Vec<Ast>, env: &mut Environment) -> Result<Ast, LispError> {
         // Create bindings
-        let mut env = Environment::with_binds(env, self.bindings.iter().cloned().zip(args));
+        env.new_scope(self.bindings.iter().cloned().zip(args).collect());
 
         // Evaluate in new environment
-        eval::eval_expr(self.body.clone(), &mut env)
+        let res = eval::eval_expr(self.body.clone(), env);
+
+        env.pop_scope();
+
+        res
     }
 }

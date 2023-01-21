@@ -1,7 +1,15 @@
 [package]
-name = "callums-lisp"
+name = "callisp"
 version = "0.1.0"
 edition = "2021"
+
+[lib]
+name = "callisp"
+path = "src/lib.rs"
+
+[[bin]]
+name = "callisp"
+path = "src/main.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -9,3 +17,6 @@ edition = "2021"
 nom = "7.1.3"
 dyn-clone = "1.0.10"
 lazy_static = "1.4.0"
+wasm-bindgen = "0.2"
+
+# [target.'cfg(target_arch = "wasm32")'.dependencies]
