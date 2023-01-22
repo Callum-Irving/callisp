@@ -6,27 +6,39 @@ use crate::{eval, parser};
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 
-/// A macro to make the next function more readable.
-macro_rules! fn_box {
-    ($func:ident) => {
-        Ast::Function(Box::new($func))
+macro_rules! fn_map {
+    ($($name:literal => $func:ident),+ ,) => {
+        {
+            let mut map: HashMap<String, Ast> = HashMap::new();
+            $(
+                map.insert($name.to_string(), Ast::Function(Box::new($func)));
+            )+
+            map
+        }
     };
+
+    ($($name:literal => $func:ident),+) => {
+        fn_map! {$($name => $func)+}
+    }
 }
 
 pub fn builtins_hashmap() -> HashMap<String, Ast> {
-    HashMap::from([
-        ("+".to_string(), fn_box!(LispAdd)),
-        ("-".to_string(), fn_box!(LispSub)),
-        ("*".to_string(), fn_box!(LispMul)),
-        ("/".to_string(), fn_box!(LispDiv)),
-        ("eval".to_string(), fn_box!(LispEval)),
-        ("exit".to_string(), fn_box!(LispExit)),
-        ("use".to_string(), fn_box!(LispUse)),
-        ("putstr".to_string(), fn_box!(LispPutStr)),
-        ("readline".to_string(), fn_box!(LispReadLine)),
-        ("use".to_string(), fn_box!(LispUse)),
-        ("equal?".to_string(), fn_box!(LispEqual)),
-    ])
+    fn_map! {
+        "+" => LispAdd,
+        "-" => LispSub,
+        "*" => LispMul,
+        "/" => LispDiv,
+        "eval" => LispEval,
+        "exit" => LispExit,
+        "use" => LispUse,
+        "putstr" => LispPutStr,
+        "readline" => LispReadLine,
+        "equal?" => LispEqual,
+        ">" => LispGT,
+        ">=" => LispGE,
+        "<" => LispLT,
+        "<=" => LispLE,
+    }
 }
 
 fn ast_to_num(ast: Ast) -> Result<f64, LispError> {
@@ -252,5 +264,81 @@ impl LispCallable for LispEqual {
         }
 
         Ok(Ast::Atom(LispAtom::Bool(true)))
+    }
+}
+
+#[derive(Debug, Clone)]
+struct LispGT;
+
+impl LispCallable for LispGT {
+    fn arity(&self) -> &FunctionArity {
+        &AT_LEAST_TWO
+    }
+
+    fn call(&self, args: Vec<Ast>, _env: &mut Environment) -> Result<Ast, LispError> {
+        let nums = to_list_of_nums(args)?;
+        let mut result = true;
+        for i in 0..nums.len() - 1 {
+            result &= nums[i] > nums[i + 1];
+        }
+
+        Ok(Ast::Atom(LispAtom::Bool(result)))
+    }
+}
+
+#[derive(Debug, Clone)]
+struct LispGE;
+
+impl LispCallable for LispGE {
+    fn arity(&self) -> &FunctionArity {
+        &AT_LEAST_TWO
+    }
+
+    fn call(&self, args: Vec<Ast>, _env: &mut Environment) -> Result<Ast, LispError> {
+        let nums = to_list_of_nums(args)?;
+        let mut result = true;
+        for i in 0..nums.len() - 1 {
+            result &= nums[i] >= nums[i + 1];
+        }
+
+        Ok(Ast::Atom(LispAtom::Bool(result)))
+    }
+}
+
+#[derive(Debug, Clone)]
+struct LispLT;
+
+impl LispCallable for LispLT {
+    fn arity(&self) -> &FunctionArity {
+        &AT_LEAST_TWO
+    }
+
+    fn call(&self, args: Vec<Ast>, _env: &mut Environment) -> Result<Ast, LispError> {
+        let nums = to_list_of_nums(args)?;
+        let mut result = true;
+        for i in 0..nums.len() - 1 {
+            result &= nums[i] < nums[i + 1];
+        }
+
+        Ok(Ast::Atom(LispAtom::Bool(result)))
+    }
+}
+
+#[derive(Debug, Clone)]
+struct LispLE;
+
+impl LispCallable for LispLE {
+    fn arity(&self) -> &FunctionArity {
+        &AT_LEAST_TWO
+    }
+
+    fn call(&self, args: Vec<Ast>, _env: &mut Environment) -> Result<Ast, LispError> {
+        let nums = to_list_of_nums(args)?;
+        let mut result = true;
+        for i in 0..nums.len() - 1 {
+            result &= nums[i] <= nums[i + 1];
+        }
+
+        Ok(Ast::Atom(LispAtom::Bool(result)))
     }
 }
