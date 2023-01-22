@@ -20,20 +20,18 @@ You can perform simple numerical operations using +, -, *, and /:
 (/ 5) => 0.2
 ```
 
-You can define constants using `define`:
+You can define constants using `def`:
 
 ```scheme
-(define x 3) => 3
+(def x 3) => 3
 x => 3
 ```
-
-Define also returns the value of the constant that was defined.
 
 You can create functions using `lambda`:
 
 ```scheme
 (lambda (x) (+ x 1)) => <function>
-(define add1 (lambda (x) (+ x 1))) => <function>
+(def add1 (lambda (x) (+ x 1))) => <unspecified>
 (add1 3) => 4
 ```
 
@@ -41,13 +39,19 @@ You can create functions using `lambda`:
 
 ### Special forms
 
-- `define`: creates a constant in the current environment
-- `lambda`: creates a function
+- `def`: creates a constant in the current environment
+- `lambda` or `λ`: creates a function
 
 ### Builtin functions
 
-- `exit`: exits with code 0 or code provided by argument
 - `+`,`-`,`*`,`/`: simple arithmetic operators
+- `exit`: exits with code 0 or code provided by argument
+- `eval`: evaluate the expression passed as an argument
+- `use`: evaluate all expressions contained in a file in the current environment
+- `putstr`: print a string to stdout
+- `readline`: read a line from stdin
+- `equal?`: check if any amount of values are equal
+- `>`, `>=`, `<`, `<=`: number comparison operators
 
 ## Goals
 
@@ -57,3 +61,4 @@ You can create functions using `lambda`:
 - [ ] Multi-precision numbers
 - [ ] Strings
 - [ ] Vectors
+- [ ] Structs/enums/union types
