@@ -1,3 +1,5 @@
+//! Contains all the built-in functions for callisp.
+
 use crate::ast::{Ast, FunctionArity, LispAtom, LispCallable};
 use crate::env::Environment;
 use crate::error::LispError;
@@ -22,7 +24,7 @@ macro_rules! fn_map {
     }
 }
 
-pub fn builtins_hashmap() -> HashMap<String, Ast> {
+pub(crate) fn builtins_hashmap() -> HashMap<String, Ast> {
     fn_map! {
         "+" => LispAdd,
         "-" => LispSub,

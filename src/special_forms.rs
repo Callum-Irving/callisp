@@ -1,3 +1,5 @@
+//! Contains all the built-in special forms such as def, lambda, etc.
+
 use std::collections::HashMap;
 
 use crate::ast::{Ast, FunctionArity, LispAtom, LispLambda};
@@ -10,7 +12,7 @@ use lazy_static::lazy_static;
 type SpecialFormFunction = fn(Vec<Ast>, &mut Environment) -> Result<Ast, LispError>;
 
 lazy_static! {
-    pub static ref SPECIAL_FORMS: HashMap<&'static str, SpecialFormFunction> = {
+    pub(crate) static ref SPECIAL_FORMS: HashMap<&'static str, SpecialFormFunction> = {
         let mut map: HashMap<&'static str, SpecialFormFunction> = HashMap::new();
         map.insert("λ", lambda);
         map.insert("lambda", lambda);
@@ -20,7 +22,7 @@ lazy_static! {
 }
 
 #[inline(always)]
-pub fn eval_special_form(
+pub(crate) fn eval_special_form(
     input: Vec<Ast>,
     env: &mut Environment,
     special_form: &SpecialFormFunction,

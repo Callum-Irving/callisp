@@ -1,8 +1,11 @@
+//! Contains the functions used to evaluate an AST.
+
 use crate::ast::{Ast, LispAtom};
 use crate::env::Environment;
 use crate::error::LispError;
 use crate::special_forms::{eval_special_form, SPECIAL_FORMS};
 
+/// Evaluate a lisp expression.
 pub fn eval_expr(input: Ast, env: &mut Environment) -> Result<Ast, LispError> {
     match input {
         Ast::List(list) => match list.get(0) {
@@ -20,7 +23,7 @@ pub fn eval_expr(input: Ast, env: &mut Environment) -> Result<Ast, LispError> {
     }
 }
 
-pub fn eval_list(list: Vec<Ast>, env: &mut Environment) -> Result<Ast, LispError> {
+fn eval_list(list: Vec<Ast>, env: &mut Environment) -> Result<Ast, LispError> {
     // eval first item of list
     // should be Ast::Function
     // call the function on rest(list)
@@ -43,7 +46,7 @@ pub fn eval_list(list: Vec<Ast>, env: &mut Environment) -> Result<Ast, LispError
     }
 }
 
-pub fn eval_symbol(symbol: &str, env: &mut Environment) -> Result<Ast, LispError> {
+fn eval_symbol(symbol: &str, env: &mut Environment) -> Result<Ast, LispError> {
     // Look up symbol in environment
     env.get(symbol).ok_or(LispError::Type)
 }

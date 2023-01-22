@@ -1,3 +1,5 @@
+//! Contains parser created using the nom crate.
+
 use crate::ast;
 
 use nom::branch::alt;
@@ -9,6 +11,7 @@ use nom::number::complete::recognize_float;
 use nom::sequence::{delimited, preceded, terminated, tuple};
 use nom::IResult;
 
+/// Parse a lisp expression.
 pub fn parse_expr(input: &str) -> IResult<&str, ast::Ast> {
     // skip whitespace
     // if first char == '(', call parse_list
