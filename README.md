@@ -55,12 +55,12 @@ You can create functions using `lambda`:
 
 ## Goals
 
-- [ ] IO (print, readline, etc.)
+Goals in order of priority:
+
+- [ ] Tail call optimization
 - [ ] Macros
-- [ ] Tail call elimination
-- [ ] Multi-precision numbers
 - [ ] Strings
+- [ ] Multi-precision numbers
 - [ ] Vectors
 - [ ] Structs/enums/union types
-
-(cons 1 2) => (1 2)
+- [x] IO (print, readline, etc.)

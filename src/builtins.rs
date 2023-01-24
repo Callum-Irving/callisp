@@ -36,6 +36,10 @@ pub(crate) fn builtins_hashmap() -> HashMap<String, Ast> {
         ">=" => LispGE,
         "<" => LispLT,
         "<=" => LispLE,
+        "list" => LispList,
+        "list?" => LispIsList,
+        "empty?" => LispIsEmpty,
+        "count" => LispCount,
     }
 }
 
@@ -57,6 +61,10 @@ fn take_first(items: Vec<Ast>) -> Result<Ast, LispError> {
     items.into_iter().next().ok_or(LispError::Type)
 }
 
+fn get_first(items: &[Ast]) -> Result<&Ast, LispError> {
+    items.get(0).ok_or(LispError::Type)
+}
+
 fn to_list_of_nums(args: Vec<Ast>) -> Result<Vec<f64>, LispError> {
     args.iter()
         .map(|ast| match ast {
@@ -71,6 +79,7 @@ lazy_static! {
 }
 const EXACTLY_ZERO: FunctionArity = FunctionArity::Exactly(0);
 const EXACTLY_ONE: FunctionArity = FunctionArity::Exactly(1);
+const AT_LEAST_ZERO: FunctionArity = FunctionArity::AtLeast(0);
 const AT_LEAST_ONE: FunctionArity = FunctionArity::AtLeast(1);
 const AT_LEAST_TWO: FunctionArity = FunctionArity::AtLeast(2);
 
@@ -338,5 +347,70 @@ impl LispCallable for LispLE {
         }
 
         Ok(Ast::Atom(LispAtom::Bool(result)))
+    }
+}
+
+#[derive(Debug, Clone)]
+struct LispList;
+
+impl LispCallable for LispList {
+    fn arity(&self) -> &FunctionArity {
+        &AT_LEAST_ZERO
+    }
+
+    fn call(&self, args: Vec<Ast>, _env: &mut Environment) -> Result<Ast, LispError> {
+        Ok(Ast::List(args))
+    }
+}
+
+#[derive(Debug, Clone)]
+struct LispIsList;
+
+impl LispCallable for LispIsList {
+    fn arity(&self) -> &FunctionArity {
+        &EXACTLY_ONE
+    }
+
+    fn call(&self, args: Vec<Ast>, _env: &mut Environment) -> Result<Ast, LispError> {
+        let is_list = matches!(get_first(&args)?, Ast::List(_));
+        Ok(Ast::Atom(LispAtom::Bool(is_list)))
+    }
+}
+
+#[derive(Debug, Clone)]
+struct LispIsEmpty;
+
+impl LispCallable for LispIsEmpty {
+    fn arity(&self) -> &FunctionArity {
+        &EXACTLY_ONE
+    }
+
+    fn call(&self, args: Vec<Ast>, _env: &mut Environment) -> Result<Ast, LispError> {
+        let arg = get_first(&args)?;
+        let is_empty = match arg {
+            Ast::List(items) => !items.is_empty(),
+            _ => false,
+        };
+
+        Ok(Ast::Atom(LispAtom::Bool(is_empty)))
+    }
+}
+
+#[derive(Debug, Clone)]
+struct LispCount;
+
+impl LispCallable for LispCount {
+    fn arity(&self) -> &FunctionArity {
+        &EXACTLY_ONE
+    }
+
+    fn call(&self, args: Vec<Ast>, _env: &mut Environment) -> Result<Ast, LispError> {
+        let arg = get_first(&args)?;
+        let length = match arg {
+            Ast::List(items) => items.len(),
+            _ => return Err(LispError::Type),
+        };
+
+        Ok(Ast::Atom(LispAtom::Number(length as f64)))
     }
 }

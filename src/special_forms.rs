@@ -18,6 +18,7 @@ lazy_static! {
         map.insert("lambda", lambda);
         map.insert("def", define);
         map.insert("if", lisp_if);
+        map.insert("quote", quote);
         map
     };
 }
@@ -90,4 +91,19 @@ pub fn lambda(args: Vec<Ast>, _env: &mut Environment) -> Result<Ast, LispError> 
     let lambda = LispLambda::new(FunctionArity::Exactly(bindings.len()), bindings, body);
 
     Ok(Ast::Function(Box::new(lambda)))
+}
+
+/// Quote a lisp value.
+///
+/// Example:
+/// `(define a 3)`
+/// `(quote a) => a` returns a instead of returning the defined value of a.
+pub fn quote(args: Vec<Ast>, _env: &mut Environment) -> Result<Ast, LispError> {
+    if args.len() != 1 {
+        return Err(LispError::Type);
+    }
+
+    let arg = args.into_iter().next().ok_or(LispError::Type)?;
+
+    Ok(arg)
 }
