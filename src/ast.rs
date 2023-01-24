@@ -122,21 +122,21 @@ impl FunctionArity {
                 if num_args >= *num_params {
                     Ok(())
                 } else {
-                    Err(LispError::Type)
+                    Err(LispError::BadArity)
                 }
             }
             Self::Exactly(num_params) => {
                 if num_args == *num_params {
                     Ok(())
                 } else {
-                    Err(LispError::Type)
+                    Err(LispError::BadArity)
                 }
             }
             Self::Multi(options) => {
                 if options.contains(&num_args) {
                     Ok(())
                 } else {
-                    Err(LispError::Type)
+                    Err(LispError::BadArity)
                 }
             }
         }

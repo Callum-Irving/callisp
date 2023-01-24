@@ -4,11 +4,14 @@
 #[derive(Debug)]
 pub enum LispError {
     /// Error with input/output. Usually means a filesystem error occured.
-    IO,
+    IOError,
 
     /// Error parsing an expression.
-    Parse,
+    ParseError,
 
     /// Type error.
-    Type,
+    TypeError,
+
+    /// Function called with incorrect number of arguments.
+    BadArity,
 }

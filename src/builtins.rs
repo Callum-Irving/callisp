@@ -46,30 +46,30 @@ pub(crate) fn builtins_hashmap() -> HashMap<String, Ast> {
 fn ast_to_num(ast: Ast) -> Result<f64, LispError> {
     match ast {
         Ast::Atom(LispAtom::Number(num)) => Ok(num),
-        _ => Err(LispError::Type),
+        _ => Err(LispError::TypeError),
     }
 }
 
 fn ast_to_string(ast: Ast) -> Result<String, LispError> {
     match ast {
         Ast::Atom(LispAtom::String(string)) => Ok(string),
-        _ => Err(LispError::Type),
+        _ => Err(LispError::TypeError),
     }
 }
 
 fn take_first(items: Vec<Ast>) -> Result<Ast, LispError> {
-    items.into_iter().next().ok_or(LispError::Type)
+    items.into_iter().next().ok_or(LispError::BadArity)
 }
 
 fn get_first(items: &[Ast]) -> Result<&Ast, LispError> {
-    items.get(0).ok_or(LispError::Type)
+    items.get(0).ok_or(LispError::BadArity)
 }
 
 fn to_list_of_nums(args: Vec<Ast>) -> Result<Vec<f64>, LispError> {
     args.iter()
         .map(|ast| match ast {
             Ast::Atom(LispAtom::Number(num)) => Ok(*num),
-            _ => Err(LispError::Type),
+            _ => Err(LispError::TypeError),
         })
         .collect::<Result<Vec<f64>, LispError>>()
 }
@@ -146,7 +146,7 @@ impl LispCallable for LispSub {
             to_list_of_nums(args)?
                 .into_iter()
                 .reduce(|acc, num| acc - num)
-                .ok_or(LispError::Type)?
+                .ok_or(LispError::BadArity)?
         } else {
             -1.0 * take_first(args).and_then(ast_to_num)?
         };
@@ -167,7 +167,7 @@ impl LispCallable for LispMul {
         let product = to_list_of_nums(args)?
             .into_iter()
             .reduce(|acc, num| acc * num)
-            .ok_or(LispError::Type)?;
+            .ok_or(LispError::BadArity)?;
 
         Ok(Ast::Atom(LispAtom::Number(product)))
     }
@@ -186,7 +186,7 @@ impl LispCallable for LispDiv {
             to_list_of_nums(args)?
                 .into_iter()
                 .reduce(|acc, num| acc / num)
-                .ok_or(LispError::Type)?
+                .ok_or(LispError::BadArity)?
         } else {
             1.0 / take_first(args).and_then(ast_to_num)?
         };
@@ -206,7 +206,7 @@ impl LispCallable for LispUse {
     fn call(&self, args: Vec<Ast>, env: &mut Environment) -> Result<Ast, LispError> {
         let file = take_first(args).and_then(ast_to_string)?;
         // convert file to string
-        let contents = std::fs::read_to_string(file).map_err(|_| LispError::IO)?;
+        let contents = std::fs::read_to_string(file).map_err(|_| LispError::IOError)?;
         let mut to_parse = contents.as_str();
         let mut res = Ast::List(vec![]);
 
@@ -246,7 +246,7 @@ impl LispCallable for LispReadLine {
         let mut buf = String::new();
         std::io::stdin()
             .read_line(&mut buf)
-            .map_err(|_| LispError::IO)?;
+            .map_err(|_| LispError::IOError)?;
         // TODO: This might break compatibility with windows
         buf.pop(); // Remove trailing '\n'
         Ok(Ast::Atom(LispAtom::String(buf)))
@@ -263,7 +263,7 @@ impl LispCallable for LispEqual {
 
     fn call(&self, args: Vec<Ast>, _env: &mut Environment) -> Result<Ast, LispError> {
         let mut iter = args.into_iter();
-        let first = iter.next().ok_or(LispError::Type)?;
+        let first = iter.next().ok_or(LispError::BadArity)?;
         for arg in iter {
             if arg != first {
                 return Ok(Ast::Atom(LispAtom::Bool(false)));
@@ -408,7 +408,7 @@ impl LispCallable for LispCount {
         let arg = get_first(&args)?;
         let length = match arg {
             Ast::List(items) => items.len(),
-            _ => return Err(LispError::Type),
+            _ => return Err(LispError::TypeError),
         };
 
         Ok(Ast::Atom(LispAtom::Number(length as f64)))

@@ -37,14 +37,14 @@ pub(crate) fn eval_special_form(
 pub fn lisp_if(args: Vec<Ast>, env: &mut Environment) -> Result<Ast, LispError> {
     let mut args = args.into_iter();
 
-    let condition = args.next().ok_or(LispError::Type)?;
+    let condition = args.next().ok_or(LispError::BadArity)?;
 
     if condition != Ast::Atom(LispAtom::Bool(false)) {
         // Evaluate true block
-        eval::eval_expr(args.next().ok_or(LispError::Type)?, env)
+        eval::eval_expr(args.next().ok_or(LispError::BadArity)?, env)
     } else {
         // Evaluate else block
-        eval::eval_expr(args.nth(1).ok_or(LispError::Type)?, env)
+        eval::eval_expr(args.nth(1).ok_or(LispError::BadArity)?, env)
     }
 }
 
@@ -56,10 +56,10 @@ pub fn define(args: Vec<Ast>, env: &mut Environment) -> Result<Ast, LispError> {
     let mut args = args.into_iter();
 
     let Some(Ast::Atom(LispAtom::Symbol(binding))) = args.next() else {
-        return Err(LispError::Type);
+        return Err(LispError::TypeError);
     };
 
-    let value = eval::eval_expr(args.next().ok_or(LispError::Type)?, env)?;
+    let value = eval::eval_expr(args.next().ok_or(LispError::BadArity)?, env)?;
 
     env.bind(binding, value);
 
@@ -79,14 +79,14 @@ pub fn lambda(args: Vec<Ast>, _env: &mut Environment) -> Result<Ast, LispError> 
             .iter()
             .map(|ast| match ast {
                 Ast::Atom(LispAtom::Symbol(symbol)) => Ok(symbol.clone()),
-                _ => Err(LispError::Type),
+                _ => Err(LispError::TypeError),
             })
             .collect::<Result<_, LispError>>()?
     } else {
-        return Err(LispError::Type);
+        return Err(LispError::TypeError);
     };
 
-    let body = args.next().ok_or(LispError::Type)?;
+    let body = args.next().ok_or(LispError::BadArity)?;
 
     let lambda = LispLambda::new(FunctionArity::Exactly(bindings.len()), bindings, body);
 
@@ -100,10 +100,10 @@ pub fn lambda(args: Vec<Ast>, _env: &mut Environment) -> Result<Ast, LispError> 
 /// `(quote a) => a` returns a instead of returning the defined value of a.
 pub fn quote(args: Vec<Ast>, _env: &mut Environment) -> Result<Ast, LispError> {
     if args.len() != 1 {
-        return Err(LispError::Type);
+        return Err(LispError::TypeError);
     }
 
-    let arg = args.into_iter().next().ok_or(LispError::Type)?;
+    let arg = args.into_iter().next().ok_or(LispError::BadArity)?;
 
     Ok(arg)
 }

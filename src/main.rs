@@ -28,13 +28,17 @@ use callisp::parser;
 
 fn read() -> Result<Ast, LispError> {
     print!("callisp> ");
-    io::stdout().flush().map_err(|_| LispError::IO)?;
+    io::stdout().flush().map_err(|_| LispError::IOError)?;
     let mut buf = String::new();
-    io::stdin().read_line(&mut buf).map_err(|_| LispError::IO)?;
+    io::stdin()
+        .read_line(&mut buf)
+        .map_err(|_| LispError::IOError)?;
     let buf = buf.trim_end().to_string();
 
     // TODO: Process input
-    let expr = parser::parse_expr(&buf).map_err(|_| LispError::Parse)?.1;
+    let expr = parser::parse_expr(&buf)
+        .map_err(|_| LispError::ParseError)?
+        .1;
 
     Ok(expr)
 }

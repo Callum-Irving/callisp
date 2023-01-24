@@ -31,7 +31,7 @@ fn eval_list(list: Vec<Ast>, env: &mut Environment) -> Result<Ast, LispError> {
 
     let func = list
         .next()
-        .ok_or(LispError::Type)
+        .ok_or(LispError::TypeError)
         .and_then(|ast| eval_expr(ast, env))?;
 
     let args: Vec<Ast> = list
@@ -42,11 +42,11 @@ fn eval_list(list: Vec<Ast>, env: &mut Environment) -> Result<Ast, LispError> {
         func.arity().check_arity(args.len())?;
         func.call(args, env)
     } else {
-        Err(LispError::Type)
+        Err(LispError::TypeError)
     }
 }
 
 fn eval_symbol(symbol: &str, env: &mut Environment) -> Result<Ast, LispError> {
     // Look up symbol in environment
-    env.get(symbol).ok_or(LispError::Type)
+    env.get(symbol).ok_or(LispError::TypeError)
 }
