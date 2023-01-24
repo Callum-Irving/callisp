@@ -39,8 +39,9 @@ You can create functions using `lambda`:
 
 ### Special forms
 
-- `def`: creates a constant in the current environment
-- `lambda` or `λ`: creates a function
+- `(def name value)`: creates a binding of name to value in current environment
+- `(lambda (bindings) expr)` or `(λ (bindings) expr)`: creates a function
+- `(if cond do else)`: evaluate do expr if cond is true, otherwise evaluate else expr
 
 ### Builtin functions
 
@@ -52,6 +53,10 @@ You can create functions using `lambda`:
 - `readline`: read a line from stdin
 - `equal?`: check if any amount of values are equal
 - `>`, `>=`, `<`, `<=`: number comparison operators
+- `list`: creates a list out of arguments given
+- `list?`: returns true if argument is a list, otherwise returns false
+- `empty?`: returns true if argument is a list of length 0, otherwise returns false
+- `count`: returns the length of the argument if the argument is a list
 
 ## Goals
 
@@ -59,6 +64,7 @@ Goals in order of priority:
 
 - [ ] Tail call optimization
 - [ ] Macros
+- [ ] Proper error handling
 - [ ] Strings
 - [ ] Multi-precision numbers
 - [ ] Vectors
