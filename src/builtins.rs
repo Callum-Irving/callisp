@@ -18,10 +18,6 @@ macro_rules! fn_map {
             map
         }
     };
-
-    ($($name:literal => $func:ident),+) => {
-        fn_map! {$($name => $func)+}
-    }
 }
 
 pub(crate) fn builtins_hashmap() -> HashMap<String, Ast> {

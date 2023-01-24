@@ -17,6 +17,7 @@ lazy_static! {
         map.insert("λ", lambda);
         map.insert("lambda", lambda);
         map.insert("def", define);
+        map.insert("if", lisp_if);
         map
     };
 }
@@ -29,6 +30,21 @@ pub(crate) fn eval_special_form(
 ) -> Result<Ast, LispError> {
     let args = input.into_iter().skip(1).collect();
     special_form(args, env)
+}
+
+/// If statement.
+pub fn lisp_if(args: Vec<Ast>, env: &mut Environment) -> Result<Ast, LispError> {
+    let mut args = args.into_iter();
+
+    let condition = args.next().ok_or(LispError::Type)?;
+
+    if condition != Ast::Atom(LispAtom::Bool(false)) {
+        // Evaluate true block
+        eval::eval_expr(args.next().ok_or(LispError::Type)?, env)
+    } else {
+        // Evaluate else block
+        eval::eval_expr(args.nth(1).ok_or(LispError::Type)?, env)
+    }
 }
 
 /// Create a binding in the current environment.

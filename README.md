@@ -62,3 +62,5 @@ You can create functions using `lambda`:
 - [ ] Strings
 - [ ] Vectors
 - [ ] Structs/enums/union types
+
+(cons 1 2) => (1 2)
