@@ -11,6 +11,20 @@ use nom::number::complete::recognize_float;
 use nom::sequence::{delimited, preceded, terminated, tuple};
 use nom::IResult;
 
+/// Parse a lisp expression. input must only contain the expression and nothing else (except for
+/// whitespace). Used only in REPL.
+pub fn parse_complete_expr(input: &str) -> IResult<&str, ast::Ast> {
+    let (remaining, ast) = parse_expr(input)?;
+    if !remaining.is_empty() {
+        IResult::Err(nom::Err::Error(nom::error::Error {
+            input,
+            code: nom::error::ErrorKind::Complete,
+        }))
+    } else {
+        IResult::Ok((remaining, ast))
+    }
+}
+
 /// Parse a lisp expression.
 pub fn parse_expr(input: &str) -> IResult<&str, ast::Ast> {
     // skip whitespace

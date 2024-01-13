@@ -48,5 +48,6 @@ fn eval_list(list: Vec<Ast>, env: &mut Environment) -> Result<Ast, LispError> {
 
 fn eval_symbol(symbol: &str, env: &mut Environment) -> Result<Ast, LispError> {
     // Look up symbol in environment
-    env.get(symbol).ok_or(LispError::TypeError)
+    env.get(symbol)
+        .ok_or(LispError::Undefined(symbol.to_string()))
 }

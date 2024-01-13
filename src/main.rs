@@ -36,8 +36,8 @@ fn read() -> Result<Ast, LispError> {
     let buf = buf.trim_end().to_string();
 
     // TODO: Process input
-    let expr = parser::parse_expr(&buf)
-        .map_err(|_| LispError::ParseError)?
+    let expr = parser::parse_complete_expr(&buf)
+        .map_err(|_| LispError::ParseError(buf.to_string()))?
         .1;
 
     Ok(expr)
@@ -63,8 +63,20 @@ fn print(input: Ast) {
 fn main() {
     let mut env = env::Environment::outer_new();
     loop {
-        let input = read().unwrap();
-        let result = eval(input, &mut env).unwrap();
+        let input = match read() {
+            Ok(expr) => expr,
+            Err(e) => {
+                eprintln!("{}", e);
+                continue;
+            }
+        };
+        let result = match eval(input, &mut env) {
+            Ok(val) => val,
+            Err(e) => {
+                eprintln!("{}", e);
+                continue;
+            }
+        };
         print(result);
     }
 }
