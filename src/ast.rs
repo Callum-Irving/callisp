@@ -78,8 +78,11 @@ pub enum LispAtom {
     /// A lisp boolean.
     Bool(bool),
 
-    /// A lisp number. Currently this is a double precision float.
-    Number(f64),
+    /// An integer.
+    Int(i64),
+
+    /// A floating point number.
+    Float(f64),
 }
 
 impl Display for LispAtom {
@@ -87,7 +90,8 @@ impl Display for LispAtom {
         match self {
             Self::Symbol(symbol) => write!(f, "{}", symbol),
             Self::String(s) => write!(f, "\"{}\"", s),
-            Self::Number(num) => write!(f, "{}", num),
+            Self::Int(n) => write!(f, "{}", n),
+            Self::Float(n) => write!(f, "{}", n), // TODO: Is there a better way of formatting floats?
             Self::Bool(b) => write!(f, "{}", b),
         }
     }

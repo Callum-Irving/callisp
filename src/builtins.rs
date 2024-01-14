@@ -43,9 +43,16 @@ pub(crate) fn builtins_hashmap() -> HashMap<String, Ast> {
     }
 }
 
-fn ast_to_num(ast: Ast) -> Result<f64, LispError> {
+fn ast_to_int(ast: &Ast) -> Result<i64, LispError> {
     match ast {
-        Ast::Atom(LispAtom::Number(num)) => Ok(num),
+        Ast::Atom(LispAtom::Int(num)) => Ok(*num),
+        _ => Err(LispError::TypeError),
+    }
+}
+
+fn ast_to_float(ast: &Ast) -> Result<f64, LispError> {
+    match ast {
+        Ast::Atom(LispAtom::Float(num)) => Ok(*num),
         _ => Err(LispError::TypeError),
     }
 }
@@ -65,13 +72,12 @@ fn get_first(items: &[Ast]) -> Result<&Ast, LispError> {
     items.get(0).ok_or(LispError::BadArity)
 }
 
-fn to_list_of_nums(args: Vec<Ast>) -> Result<Vec<f64>, LispError> {
-    args.iter()
-        .map(|ast| match ast {
-            Ast::Atom(LispAtom::Number(num)) => Ok(*num),
-            _ => Err(LispError::TypeError),
-        })
-        .collect::<Result<Vec<f64>, LispError>>()
+fn to_list_of_floats(args: Vec<Ast>) -> Result<Vec<f64>, LispError> {
+    args.iter().map(|ast| ast_to_float(ast)).collect()
+}
+
+fn to_list_of_ints(args: Vec<Ast>) -> Result<Vec<i64>, LispError> {
+    args.iter().map(|ast| ast_to_int(ast)).collect()
 }
 
 lazy_static! {
@@ -93,7 +99,7 @@ impl LispCallable for LispExit {
 
     fn call(&self, args: Vec<Ast>, _env: &mut Environment) -> Result<Ast, LispError> {
         let code = match args.into_iter().next() {
-            Some(code) => ast_to_num(code)? as i32,
+            Some(code) => ast_to_int(&code)? as i32,
             None => 0,
         };
 
@@ -123,13 +129,28 @@ impl LispCallable for LispAdd {
     }
 
     fn call(&self, args: Vec<Ast>, _env: &mut Environment) -> Result<Ast, LispError> {
-        let sum = if args.len() > 1 {
-            to_list_of_nums(args)?.into_iter().sum()
+        if args.len() > 1 {
+            let all_ints = args.iter().fold(true, |acc, ast| {
+                acc && matches!(ast, Ast::Atom(LispAtom::Int(_)))
+            });
+            if all_ints {
+                let sum = to_list_of_ints(args)?.into_iter().sum();
+                Ok(Ast::Atom(LispAtom::Int(sum)))
+            } else {
+                let sum = to_list_of_floats(args)?.into_iter().sum();
+                Ok(Ast::Atom(LispAtom::Float(sum)))
+            }
         } else {
-            take_first(args).and_then(ast_to_num)?
-        };
-
-        Ok(Ast::Atom(LispAtom::Number(sum)))
+            let arg = take_first(args)?;
+            if matches!(
+                arg,
+                Ast::Atom(LispAtom::Float(_)) | Ast::Atom(LispAtom::Int(_))
+            ) {
+                Ok(arg)
+            } else {
+                Err(LispError::TypeError)
+            }
+        }
     }
 }
 
@@ -143,15 +164,15 @@ impl LispCallable for LispSub {
 
     fn call(&self, args: Vec<Ast>, _env: &mut Environment) -> Result<Ast, LispError> {
         let difference = if args.len() > 1 {
-            to_list_of_nums(args)?
+            to_list_of_floats(args)?
                 .into_iter()
                 .reduce(|acc, num| acc - num)
                 .ok_or(LispError::BadArity)?
         } else {
-            -1.0 * take_first(args).and_then(ast_to_num)?
+            -1.0 * get_first(&args).and_then(ast_to_float)?
         };
 
-        Ok(Ast::Atom(LispAtom::Number(difference)))
+        Ok(Ast::Atom(LispAtom::Float(difference)))
     }
 }
 
@@ -164,12 +185,12 @@ impl LispCallable for LispMul {
     }
 
     fn call(&self, args: Vec<Ast>, _env: &mut Environment) -> Result<Ast, LispError> {
-        let product = to_list_of_nums(args)?
+        let product = to_list_of_floats(args)?
             .into_iter()
             .reduce(|acc, num| acc * num)
             .ok_or(LispError::BadArity)?;
 
-        Ok(Ast::Atom(LispAtom::Number(product)))
+        Ok(Ast::Atom(LispAtom::Float(product)))
     }
 }
 
@@ -183,15 +204,15 @@ impl LispCallable for LispDiv {
 
     fn call(&self, args: Vec<Ast>, _env: &mut Environment) -> Result<Ast, LispError> {
         let quotient = if args.len() > 1 {
-            to_list_of_nums(args)?
+            to_list_of_floats(args)?
                 .into_iter()
                 .reduce(|acc, num| acc / num)
                 .ok_or(LispError::BadArity)?
         } else {
-            1.0 / take_first(args).and_then(ast_to_num)?
+            1.0 / get_first(&args).and_then(ast_to_float)?
         };
 
-        Ok(Ast::Atom(LispAtom::Number(quotient)))
+        Ok(Ast::Atom(LispAtom::Float(quotient)))
     }
 }
 
@@ -283,7 +304,7 @@ impl LispCallable for LispGT {
     }
 
     fn call(&self, args: Vec<Ast>, _env: &mut Environment) -> Result<Ast, LispError> {
-        let nums = to_list_of_nums(args)?;
+        let nums = to_list_of_floats(args)?;
         let mut result = true;
         for i in 0..nums.len() - 1 {
             result &= nums[i] > nums[i + 1];
@@ -302,7 +323,7 @@ impl LispCallable for LispGE {
     }
 
     fn call(&self, args: Vec<Ast>, _env: &mut Environment) -> Result<Ast, LispError> {
-        let nums = to_list_of_nums(args)?;
+        let nums = to_list_of_floats(args)?;
         let mut result = true;
         for i in 0..nums.len() - 1 {
             result &= nums[i] >= nums[i + 1];
@@ -321,7 +342,7 @@ impl LispCallable for LispLT {
     }
 
     fn call(&self, args: Vec<Ast>, _env: &mut Environment) -> Result<Ast, LispError> {
-        let nums = to_list_of_nums(args)?;
+        let nums = to_list_of_floats(args)?;
         let mut result = true;
         for i in 0..nums.len() - 1 {
             result &= nums[i] < nums[i + 1];
@@ -340,7 +361,7 @@ impl LispCallable for LispLE {
     }
 
     fn call(&self, args: Vec<Ast>, _env: &mut Environment) -> Result<Ast, LispError> {
-        let nums = to_list_of_nums(args)?;
+        let nums = to_list_of_floats(args)?;
         let mut result = true;
         for i in 0..nums.len() - 1 {
             result &= nums[i] <= nums[i + 1];
@@ -411,6 +432,6 @@ impl LispCallable for LispCount {
             _ => return Err(LispError::TypeError),
         };
 
-        Ok(Ast::Atom(LispAtom::Number(length as f64)))
+        Ok(Ast::Atom(LispAtom::Float(length as f64)))
     }
 }

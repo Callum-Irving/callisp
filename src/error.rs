@@ -17,6 +17,7 @@ pub enum LispError {
     Undefined(String),
 
     /// Type error.
+    /// TODO: Add "expected" and "got"
     TypeError,
 
     /// Function called with incorrect number of arguments.

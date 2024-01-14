@@ -4,10 +4,9 @@ use crate::ast;
 
 use nom::branch::alt;
 use nom::bytes::complete::{tag, take_while};
-use nom::character::complete::{char, multispace0, multispace1, satisfy};
-use nom::combinator::{map, map_res, recognize};
+use nom::character::complete::{char, digit1, multispace0, multispace1, satisfy};
+use nom::combinator::{cut, map, opt, recognize};
 use nom::multi::separated_list0;
-use nom::number::complete::recognize_float;
 use nom::sequence::{delimited, preceded, terminated, tuple};
 use nom::IResult;
 
@@ -48,15 +47,44 @@ fn parse_list(input: &str) -> IResult<&str, ast::Ast> {
 }
 
 fn parse_atom(input: &str) -> IResult<&str, ast::Ast> {
-    alt((parse_num, parse_string, parse_bool, parse_symbol))(input)
+    alt((
+        parse_float,
+        parse_int,
+        parse_string,
+        parse_bool,
+        parse_symbol,
+    ))(input)
 }
 
-fn parse_num(input: &str) -> IResult<&str, ast::Ast> {
-    // TODO: Use some sort of multi-precision number instead of f64
-    map(
-        map_res(recognize_float, |s: &str| s.parse::<f64>()),
-        |num| ast::Ast::Atom(ast::LispAtom::Number(num)),
-    )(input)
+fn recognize_float_exponent(input: &str) -> IResult<&str, &str> {
+    recognize(tuple((
+        alt((char('e'), char('E'))),
+        opt(alt((char('+'), char('-')))),
+        cut(digit1),
+    )))(input)
+}
+
+fn parse_float(input: &str) -> IResult<&str, ast::Ast> {
+    let res: IResult<&str, &str> = recognize(tuple((
+        opt(alt((char('+'), char('-')))),
+        digit1,
+        alt((
+            map(
+                tuple((char('.'), opt(digit1), opt(recognize_float_exponent))),
+                |_| (),
+            ),
+            map(recognize_float_exponent, |_| ()),
+        )),
+    )))(input);
+    let (remaining, num_str) = res?;
+    let num = num_str.parse::<f64>().unwrap();
+    Ok((remaining, ast::Ast::Atom(ast::LispAtom::Float(num))))
+}
+
+fn parse_int(input: &str) -> IResult<&str, ast::Ast> {
+    let (remaining, num_str) = recognize(tuple((opt(alt((char('+'), char('-')))), digit1)))(input)?;
+    let num = num_str.parse::<i64>().unwrap();
+    Ok((remaining, ast::Ast::Atom(ast::LispAtom::Int(num))))
 }
 
 fn parse_string(input: &str) -> IResult<&str, ast::Ast> {
@@ -103,11 +131,11 @@ mod tests {
     #[test]
     fn parse_atom_works() {
         let (_, ast) = parse_atom("1").expect("parse atom failed");
-        let expected = ast::Ast::Atom(ast::LispAtom::Number(1.0));
+        let expected = ast::Ast::Atom(ast::LispAtom::Int(1));
         assert_eq!(ast, expected);
 
         let (_, ast) = parse_atom("1E10").expect("parse atom failed");
-        let expected = ast::Ast::Atom(ast::LispAtom::Number(1E10));
+        let expected = ast::Ast::Atom(ast::LispAtom::Float(1E10));
         assert_eq!(ast, expected);
     }
 
@@ -115,8 +143,8 @@ mod tests {
     fn parse_list_works() {
         let (_, ast) = parse_list("(1 2\n)").expect("parse list failed");
         let expected = ast::Ast::List(vec![
-            ast::Ast::Atom(ast::LispAtom::Number(1.0)),
-            ast::Ast::Atom(ast::LispAtom::Number(2.0)),
+            ast::Ast::Atom(ast::LispAtom::Int(1)),
+            ast::Ast::Atom(ast::LispAtom::Int(2)),
         ]);
         assert_eq!(ast, expected);
     }
@@ -129,7 +157,7 @@ mod tests {
             ast::Ast::Atom(ast::LispAtom::Symbol("two".to_string())),
             ast::Ast::List(vec![
                 ast::Ast::Atom(ast::LispAtom::Symbol("f".to_string())),
-                ast::Ast::Atom(ast::LispAtom::Number(3.0)),
+                ast::Ast::Atom(ast::LispAtom::Int(3)),
             ]),
         ]);
         assert_eq!(ast, expected);
