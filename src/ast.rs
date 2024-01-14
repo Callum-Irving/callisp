@@ -19,6 +19,9 @@ pub enum Ast {
     /// A callable function.
     Function(Box<dyn LispCallable>),
 
+    /// A type (like int or float).
+    Type(LispType),
+
     /// Basically a none type.
     Unspecified,
 }
@@ -32,6 +35,10 @@ impl PartialEq for Ast {
             },
             Ast::List(items) => match other {
                 Ast::List(other) => items == other,
+                _ => false,
+            },
+            Ast::Type(typ) => match other {
+                Ast::Type(other) => typ == other,
                 _ => false,
             },
             // TODO: Maybe two functions are equal if they have the same body?
@@ -60,6 +67,7 @@ impl Display for Ast {
 
                 write!(f, ")")
             }
+            Self::Type(typ) => write!(f, "{}", typ),
             Self::Function(_) => write!(f, "<function>"),
             Self::Unspecified => Ok(()), // unspecified doesn't display anything
         }
@@ -190,5 +198,71 @@ impl LispCallable for LispLambda {
         env.pop_scope();
 
         res
+    }
+}
+
+/// A Lisp type.
+/// TODO: Add structs (user-defined types).
+#[derive(Debug, Clone, PartialEq)]
+pub enum LispType {
+    /// An integer.
+    Int,
+
+    /// A floating point number.
+    Float,
+
+    /// A string.
+    String,
+
+    /// A boolean value.
+    Bool,
+
+    /// A list.
+    List,
+
+    /// A function.
+    Function,
+
+    /// A type. This can be a bit confusing.
+    Type,
+
+    /// A symbol.
+    Symbol,
+
+    /// An unspecified type.
+    Unspecified,
+}
+
+impl Display for LispType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Int => write!(f, "builtin type int"),
+            Self::Float => write!(f, "builtin type float"),
+            Self::String => write!(f, "builtin type string"),
+            Self::Bool => write!(f, "builtin type bool"),
+            Self::List => write!(f, "list"),
+            Self::Function => write!(f, "function"),
+            Self::Type => write!(f, "type"),
+            Self::Symbol => write!(f, "symbol"),
+            Self::Unspecified => write!(f, "unspecified"),
+        }
+    }
+}
+
+impl From<&Ast> for LispType {
+    fn from(value: &Ast) -> Self {
+        match value {
+            Ast::Atom(atom) => match atom {
+                LispAtom::Symbol(_) => Self::Symbol,
+                LispAtom::Int(_) => Self::Int,
+                LispAtom::Float(_) => Self::Float,
+                LispAtom::String(_) => Self::String,
+                LispAtom::Bool(_) => Self::Bool,
+            },
+            Ast::List(_) => Self::List,
+            Ast::Function(_) => Self::Function,
+            Ast::Type(_) => Self::Type,
+            Ast::Unspecified => Self::Unspecified,
+        }
     }
 }

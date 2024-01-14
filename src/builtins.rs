@@ -1,6 +1,6 @@
 //! Contains all the built-in functions for callisp.
 
-use crate::ast::{Ast, FunctionArity, LispAtom, LispCallable};
+use crate::ast::{Ast, FunctionArity, LispAtom, LispCallable, LispType};
 use crate::env::Environment;
 use crate::error::LispError;
 use crate::{eval, parser};
@@ -40,6 +40,7 @@ pub(crate) fn builtins_hashmap() -> HashMap<String, Ast> {
         "list?" => LispIsList,
         "empty?" => LispIsEmpty,
         "count" => LispCount,
+        "type" => LispGetType,
     }
 }
 
@@ -433,5 +434,19 @@ impl LispCallable for LispCount {
         };
 
         Ok(Ast::Atom(LispAtom::Float(length as f64)))
+    }
+}
+
+#[derive(Debug, Clone)]
+struct LispGetType;
+
+impl LispCallable for LispGetType {
+    fn arity(&self) -> &FunctionArity {
+        &EXACTLY_ONE
+    }
+
+    fn call(&self, args: Vec<Ast>, _env: &mut Environment) -> Result<Ast, LispError> {
+        let arg = get_first(&args)?;
+        Ok(Ast::Type(LispType::from(arg)))
     }
 }
