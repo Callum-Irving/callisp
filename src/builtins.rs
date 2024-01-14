@@ -54,6 +54,7 @@ fn ast_to_int(ast: &Ast) -> Result<i64, LispError> {
 fn ast_to_float(ast: &Ast) -> Result<f64, LispError> {
     match ast {
         Ast::Atom(LispAtom::Float(num)) => Ok(*num),
+        Ast::Atom(LispAtom::Int(num)) => Ok(*num as f64),
         _ => Err(LispError::TypeError),
     }
 }
