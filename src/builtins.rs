@@ -30,6 +30,7 @@ pub(crate) fn builtins_hashmap() -> HashMap<String, Ast> {
         "eval" => LISP_EVAL,
         "exit" => LISP_EXIT,
         "use" => LISP_USE,
+        "println" => LISP_PRINTLN,
         "putstr" => LISP_PUT_STR,
         "readline" => LISP_READ_LINE,
         "equal?" => LISP_EQUAL,
@@ -239,7 +240,16 @@ const LISP_USE: LispBuiltin = LispBuiltin {
     arity: exactly_one,
     func: |args, env| {
         let file = take_first(args).and_then(ast_to_string)?;
-        crate::execute_file(&file, env)
+        crate::execute_file(file.into(), env)
+    },
+};
+
+const LISP_PRINTLN: LispBuiltin = LispBuiltin {
+    arity: exactly_one,
+    func: |args, _env| {
+        let arg = take_first(args)?;
+        println!("{}", arg);
+        Ok(Ast::Unspecified)
     },
 };
 
