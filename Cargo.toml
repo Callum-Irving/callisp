@@ -10,10 +10,6 @@ repository = "https://github.com/Callum-Irving/callisp"
 readme = "README.md"
 homepage = "https://callumirving.pages.dev/projects/callisp/"
 
-[lib]
-name = "callisp"
-path = "src/lib.rs"
-
 [[bin]]
 name = "callisp"
 path = "src/main.rs"
