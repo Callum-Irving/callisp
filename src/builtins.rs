@@ -3,7 +3,7 @@
 use crate::ast::{Ast, LispAtom, LispCallable, LispType};
 use crate::env::Environment;
 use crate::error::LispError;
-use crate::{eval, parser};
+use crate::eval;
 
 use std::collections::HashMap;
 use std::fmt::Debug;
@@ -26,6 +26,7 @@ pub(crate) fn builtins_hashmap() -> HashMap<String, Ast> {
         "-" => LISP_SUB,
         "*" => LISP_MUL,
         "/" => LISP_DIV,
+        "%" => LISP_MOD,
         "eval" => LISP_EVAL,
         "exit" => LISP_EXIT,
         "use" => LISP_USE,
@@ -92,6 +93,10 @@ fn exactly_zero(num_args: usize) -> bool {
 
 fn exactly_one(num_args: usize) -> bool {
     return num_args == 1;
+}
+
+fn exactly_two(num_args: usize) -> bool {
+    return num_args == 2;
 }
 
 fn at_least_zero(_num_args: usize) -> bool {
@@ -220,21 +225,22 @@ const LISP_DIV: LispBuiltin = LispBuiltin {
     },
 };
 
+const LISP_MOD: LispBuiltin = LispBuiltin {
+    arity: exactly_two,
+    func: |args, _env| {
+        let n = args.get(0).ok_or(LispError::BadArity)?;
+        let n = ast_to_int(&n)?;
+        let modulus = args.get(1).ok_or(LispError::BadArity)?;
+        let modulus = ast_to_int(&modulus)?;
+        Ok(Ast::Atom(LispAtom::Int(n % modulus)))
+    },
+};
+
 const LISP_USE: LispBuiltin = LispBuiltin {
     arity: exactly_one,
     func: |args, env| {
         let file = take_first(args).and_then(ast_to_string)?;
-        // convert file to string
-        let contents = std::fs::read_to_string(file).map_err(|_| LispError::IOError)?;
-        let mut to_parse = contents.as_str();
-        let mut res = Ast::List(vec![]);
-
-        while let Ok((rest, expr)) = parser::parse_expr(to_parse) {
-            to_parse = rest;
-            res = eval::eval_expr(expr, env)?;
-        }
-
-        Ok(res)
+        crate::execute_file(&file, env)
     },
 };
 

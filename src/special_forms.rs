@@ -38,6 +38,7 @@ pub fn lisp_if(args: Vec<Ast>, env: &mut Environment) -> Result<Ast, LispError> 
     let mut args = args.into_iter();
 
     let condition = args.next().ok_or(LispError::BadArity)?;
+    let condition = eval::eval_expr(condition, env)?;
 
     if condition != Ast::Atom(LispAtom::Bool(false)) {
         // Evaluate true block
