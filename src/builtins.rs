@@ -72,43 +72,39 @@ fn take_first(items: Vec<Ast>) -> Result<Ast, LispError> {
 }
 
 fn get_first(items: &[Ast]) -> Result<&Ast, LispError> {
-    items.get(0).ok_or(LispError::BadArity)
+    items.first().ok_or(LispError::BadArity)
 }
 
 fn to_list_of_floats(args: Vec<Ast>) -> Result<Vec<f64>, LispError> {
-    args.iter().map(|ast| ast_to_float(ast)).collect()
+    args.iter().map(ast_to_float).collect()
 }
 
 fn to_list_of_ints(args: Vec<Ast>) -> Result<Vec<i64>, LispError> {
-    args.iter().map(|ast| ast_to_int(ast)).collect()
+    args.iter().map(ast_to_int).collect()
 }
 
 fn one_or_zero(num_args: usize) -> bool {
-    return num_args <= 1;
+    num_args <= 1
 }
 
 fn exactly_zero(num_args: usize) -> bool {
-    return num_args == 0;
+    num_args == 0
 }
 
 fn exactly_one(num_args: usize) -> bool {
-    return num_args == 1;
+    num_args == 1
 }
 
 fn exactly_two(num_args: usize) -> bool {
-    return num_args == 2;
-}
-
-fn at_least_zero(_num_args: usize) -> bool {
-    return true;
+    num_args == 2
 }
 
 fn at_least_one(num_args: usize) -> bool {
-    return num_args >= 1;
+    num_args >= 1
 }
 
 fn at_least_two(num_args: usize) -> bool {
-    return num_args >= 2;
+    num_args >= 2
 }
 
 /// A Lisp builtin function.
@@ -157,9 +153,12 @@ const LISP_ADD: LispBuiltin = LispBuiltin {
     arity: at_least_one,
     func: |args, _env| {
         if args.len() > 1 {
-            let all_ints = args.iter().fold(true, |acc, ast| {
-                acc && matches!(ast, Ast::Atom(LispAtom::Int(_)))
-            });
+            // let all_ints = args.iter().fold(true, |acc, ast| {
+            //     acc && matches!(ast, Ast::Atom(LispAtom::Int(_)))
+            // });
+            let all_ints = args
+                .iter()
+                .all(|ast| matches!(ast, Ast::Atom(LispAtom::Int(_))));
             if all_ints {
                 let sum = to_list_of_ints(args)?.into_iter().sum();
                 Ok(Ast::Atom(LispAtom::Int(sum)))
@@ -228,10 +227,10 @@ const LISP_DIV: LispBuiltin = LispBuiltin {
 const LISP_MOD: LispBuiltin = LispBuiltin {
     arity: exactly_two,
     func: |args, _env| {
-        let n = args.get(0).ok_or(LispError::BadArity)?;
-        let n = ast_to_int(&n)?;
+        let n = args.first().ok_or(LispError::BadArity)?;
+        let n = ast_to_int(n)?;
         let modulus = args.get(1).ok_or(LispError::BadArity)?;
-        let modulus = ast_to_int(&modulus)?;
+        let modulus = ast_to_int(modulus)?;
         Ok(Ast::Atom(LispAtom::Int(n % modulus)))
     },
 };
@@ -335,7 +334,7 @@ const LISP_LE: LispBuiltin = LispBuiltin {
 };
 
 const LISP_LIST: LispBuiltin = LispBuiltin {
-    arity: at_least_zero,
+    arity: |_num_args| true,
     func: |args, _env| Ok(Ast::List(args)),
 };
 
