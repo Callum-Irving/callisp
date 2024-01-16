@@ -111,54 +111,10 @@ impl Clone for Box<dyn LispCallable> {
     }
 }
 
-/// A struct representing the possible values of arity a function can have. Arity is just the
-/// number of arguments a function takes.
-#[derive(Debug, Clone)]
-pub enum FunctionArity {
-    /// The function can be called with a number of arguments greater than or equal to the
-    /// contained value.
-    AtLeast(usize),
-
-    /// The function can be called with only the specified amount of arguments.
-    Exactly(usize),
-
-    /// The function can be called with any of the amounts of arguments stored in the vector.
-    Multi(Vec<usize>),
-}
-
-impl FunctionArity {
-    /// Check is the number of arguments passed to a function matches that functions arity.
-    pub fn check_arity(&self, num_args: usize) -> Result<(), LispError> {
-        match self {
-            Self::AtLeast(num_params) => {
-                if num_args >= *num_params {
-                    Ok(())
-                } else {
-                    Err(LispError::BadArity)
-                }
-            }
-            Self::Exactly(num_params) => {
-                if num_args == *num_params {
-                    Ok(())
-                } else {
-                    Err(LispError::BadArity)
-                }
-            }
-            Self::Multi(options) => {
-                if options.contains(&num_args) {
-                    Ok(())
-                } else {
-                    Err(LispError::BadArity)
-                }
-            }
-        }
-    }
-}
-
 /// Trait used to define Lisp functions.
 pub trait LispCallable: Debug + DynClone {
-    /// Return the arity of the function.
-    fn arity(&self) -> &FunctionArity;
+    /// Returns true if num_args is a valid number of arguments to pass to the function.
+    fn arity(&self, num_args: usize) -> bool;
 
     /// Call the function and return the result.
     fn call(&self, args: Vec<Ast>, env: &mut Environment) -> Result<Ast, LispError>;
@@ -167,14 +123,14 @@ pub trait LispCallable: Debug + DynClone {
 /// Function created using `lambda`.
 #[derive(Debug, Clone)]
 pub struct LispLambda {
-    arity: FunctionArity,
+    arity: usize,
     bindings: Vec<String>,
     body: Ast,
 }
 
 impl LispLambda {
     /// Create a new lambda function with specified arity, bindings, and body.
-    pub fn new(arity: FunctionArity, bindings: Vec<String>, body: Ast) -> Self {
+    pub fn new(arity: usize, bindings: Vec<String>, body: Ast) -> Self {
         Self {
             arity,
             bindings,
@@ -184,8 +140,8 @@ impl LispLambda {
 }
 
 impl LispCallable for LispLambda {
-    fn arity(&self) -> &FunctionArity {
-        &self.arity
+    fn arity(&self, num_args: usize) -> bool {
+        num_args == self.arity
     }
 
     fn call(&self, args: Vec<Ast>, env: &mut Environment) -> Result<Ast, LispError> {

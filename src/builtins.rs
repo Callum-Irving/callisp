@@ -1,12 +1,12 @@
 //! Contains all the built-in functions for callisp.
 
-use crate::ast::{Ast, FunctionArity, LispAtom, LispCallable, LispType};
+use crate::ast::{Ast, LispAtom, LispCallable, LispType};
 use crate::env::Environment;
 use crate::error::LispError;
 use crate::{eval, parser};
 
-use lazy_static::lazy_static;
 use std::collections::HashMap;
+use std::fmt::Debug;
 
 macro_rules! fn_map {
     ($($name:literal => $func:ident),+ ,) => {
@@ -22,25 +22,25 @@ macro_rules! fn_map {
 
 pub(crate) fn builtins_hashmap() -> HashMap<String, Ast> {
     fn_map! {
-        "+" => LispAdd,
-        "-" => LispSub,
-        "*" => LispMul,
-        "/" => LispDiv,
-        "eval" => LispEval,
-        "exit" => LispExit,
-        "use" => LispUse,
-        "putstr" => LispPutStr,
-        "readline" => LispReadLine,
-        "equal?" => LispEqual,
-        ">" => LispGT,
-        ">=" => LispGE,
-        "<" => LispLT,
-        "<=" => LispLE,
-        "list" => LispList,
-        "list?" => LispIsList,
-        "empty?" => LispIsEmpty,
-        "count" => LispCount,
-        "type" => LispGetType,
+        "+" => LISP_ADD,
+        "-" => LISP_SUB,
+        "*" => LISP_MUL,
+        "/" => LISP_DIV,
+        "eval" => LISP_EVAL,
+        "exit" => LISP_EXIT,
+        "use" => LISP_USE,
+        "putstr" => LISP_PUT_STR,
+        "readline" => LISP_READ_LINE,
+        "equal?" => LISP_EQUAL,
+        ">" => LISP_GT,
+        ">=" => LISP_GE,
+        "<" => LISP_LT,
+        "<=" => LISP_LE,
+        "list" => LISP_LIST,
+        "list?" => LISP_IS_LIST,
+        "empty?" => LISP_IS_EMPTY,
+        "count" => LISP_COUNT,
+        "type" => LISP_GET_TYPE,
     }
 }
 
@@ -82,55 +82,75 @@ fn to_list_of_ints(args: Vec<Ast>) -> Result<Vec<i64>, LispError> {
     args.iter().map(|ast| ast_to_int(ast)).collect()
 }
 
-lazy_static! {
-    static ref ONE_OR_ZERO: FunctionArity = FunctionArity::Multi(vec![0, 1]);
+fn one_or_zero(num_args: usize) -> bool {
+    return num_args <= 1;
 }
-const EXACTLY_ZERO: FunctionArity = FunctionArity::Exactly(0);
-const EXACTLY_ONE: FunctionArity = FunctionArity::Exactly(1);
-const AT_LEAST_ZERO: FunctionArity = FunctionArity::AtLeast(0);
-const AT_LEAST_ONE: FunctionArity = FunctionArity::AtLeast(1);
-const AT_LEAST_TWO: FunctionArity = FunctionArity::AtLeast(2);
 
-#[derive(Debug, Clone)]
-struct LispExit;
+fn exactly_zero(num_args: usize) -> bool {
+    return num_args == 0;
+}
 
-impl LispCallable for LispExit {
-    fn arity(&self) -> &FunctionArity {
-        &ONE_OR_ZERO
+fn exactly_one(num_args: usize) -> bool {
+    return num_args == 1;
+}
+
+fn at_least_zero(_num_args: usize) -> bool {
+    return true;
+}
+
+fn at_least_one(num_args: usize) -> bool {
+    return num_args >= 1;
+}
+
+fn at_least_two(num_args: usize) -> bool {
+    return num_args >= 2;
+}
+
+/// A Lisp builtin function.
+/// TODO: Also used for Rust modules so should probably change name.
+#[derive(Clone)]
+pub struct LispBuiltin {
+    arity: fn(usize) -> bool,
+    func: fn(Vec<Ast>, &mut Environment) -> Result<Ast, LispError>,
+}
+
+impl Debug for LispBuiltin {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // TODO: Implementation could probably be better
+        write!(f, "builtin function")
+    }
+}
+
+impl LispCallable for LispBuiltin {
+    fn arity(&self, num_args: usize) -> bool {
+        (self.arity)(num_args)
     }
 
-    fn call(&self, args: Vec<Ast>, _env: &mut Environment) -> Result<Ast, LispError> {
+    fn call(&self, args: Vec<Ast>, env: &mut Environment) -> Result<Ast, LispError> {
+        (self.func)(args, env)
+    }
+}
+
+const LISP_EXIT: LispBuiltin = LispBuiltin {
+    arity: one_or_zero,
+    func: |args, _env| {
         let code = match args.into_iter().next() {
             Some(code) => ast_to_int(&code)? as i32,
             None => 0,
         };
 
         std::process::exit(code);
-    }
-}
+    },
+};
 
-#[derive(Debug, Clone)]
-struct LispEval;
+const LISP_EVAL: LispBuiltin = LispBuiltin {
+    arity: exactly_one,
+    func: |args, env| eval::eval_expr(take_first(args)?, env),
+};
 
-impl LispCallable for LispEval {
-    fn arity(&self) -> &FunctionArity {
-        &EXACTLY_ONE
-    }
-
-    fn call(&self, args: Vec<Ast>, env: &mut crate::env::Environment) -> Result<Ast, LispError> {
-        eval::eval_expr(take_first(args)?, env)
-    }
-}
-
-#[derive(Debug, Clone)]
-struct LispAdd;
-
-impl LispCallable for LispAdd {
-    fn arity(&self) -> &FunctionArity {
-        &AT_LEAST_ONE
-    }
-
-    fn call(&self, args: Vec<Ast>, _env: &mut Environment) -> Result<Ast, LispError> {
+const LISP_ADD: LispBuiltin = LispBuiltin {
+    arity: at_least_one,
+    func: |args, _env| {
         if args.len() > 1 {
             let all_ints = args.iter().fold(true, |acc, ast| {
                 acc && matches!(ast, Ast::Atom(LispAtom::Int(_)))
@@ -153,18 +173,12 @@ impl LispCallable for LispAdd {
                 Err(LispError::TypeError)
             }
         }
-    }
-}
+    },
+};
 
-#[derive(Debug, Clone)]
-struct LispSub;
-
-impl LispCallable for LispSub {
-    fn arity(&self) -> &FunctionArity {
-        &AT_LEAST_ONE
-    }
-
-    fn call(&self, args: Vec<Ast>, _env: &mut Environment) -> Result<Ast, LispError> {
+const LISP_SUB: LispBuiltin = LispBuiltin {
+    arity: at_least_one,
+    func: |args, _env| {
         let difference = if args.len() > 1 {
             to_list_of_floats(args)?
                 .into_iter()
@@ -175,36 +189,24 @@ impl LispCallable for LispSub {
         };
 
         Ok(Ast::Atom(LispAtom::Float(difference)))
-    }
-}
+    },
+};
 
-#[derive(Debug, Clone)]
-struct LispMul;
-
-impl LispCallable for LispMul {
-    fn arity(&self) -> &FunctionArity {
-        &AT_LEAST_ONE
-    }
-
-    fn call(&self, args: Vec<Ast>, _env: &mut Environment) -> Result<Ast, LispError> {
+const LISP_MUL: LispBuiltin = LispBuiltin {
+    arity: at_least_one,
+    func: |args, _env| {
         let product = to_list_of_floats(args)?
             .into_iter()
             .reduce(|acc, num| acc * num)
             .ok_or(LispError::BadArity)?;
 
         Ok(Ast::Atom(LispAtom::Float(product)))
-    }
-}
+    },
+};
 
-#[derive(Debug, Clone)]
-struct LispDiv;
-
-impl LispCallable for LispDiv {
-    fn arity(&self) -> &FunctionArity {
-        &AT_LEAST_ONE
-    }
-
-    fn call(&self, args: Vec<Ast>, _env: &mut Environment) -> Result<Ast, LispError> {
+const LISP_DIV: LispBuiltin = LispBuiltin {
+    arity: at_least_one,
+    func: |args, _env| {
         let quotient = if args.len() > 1 {
             to_list_of_floats(args)?
                 .into_iter()
@@ -215,18 +217,12 @@ impl LispCallable for LispDiv {
         };
 
         Ok(Ast::Atom(LispAtom::Float(quotient)))
-    }
-}
+    },
+};
 
-#[derive(Debug, Clone)]
-struct LispUse;
-
-impl LispCallable for LispUse {
-    fn arity(&self) -> &FunctionArity {
-        &EXACTLY_ONE
-    }
-
-    fn call(&self, args: Vec<Ast>, env: &mut Environment) -> Result<Ast, LispError> {
+const LISP_USE: LispBuiltin = LispBuiltin {
+    arity: exactly_one,
+    func: |args, env| {
         let file = take_first(args).and_then(ast_to_string)?;
         // convert file to string
         let contents = std::fs::read_to_string(file).map_err(|_| LispError::IOError)?;
@@ -239,33 +235,22 @@ impl LispCallable for LispUse {
         }
 
         Ok(res)
-    }
-}
+    },
+};
 
-#[derive(Debug, Clone)]
-struct LispPutStr;
-
-impl LispCallable for LispPutStr {
-    fn arity(&self) -> &FunctionArity {
-        &EXACTLY_ONE
-    }
-
-    fn call(&self, args: Vec<Ast>, _env: &mut Environment) -> Result<Ast, LispError> {
+// TODO: be able to write to any file (not just stdout).
+const LISP_PUT_STR: LispBuiltin = LispBuiltin {
+    arity: exactly_one,
+    func: |args, _env| {
         let string = take_first(args).and_then(ast_to_string)?;
         println!("{}", string);
         Ok(Ast::Unspecified)
-    }
-}
+    },
+};
 
-#[derive(Debug, Clone)]
-struct LispReadLine;
-
-impl LispCallable for LispReadLine {
-    fn arity(&self) -> &FunctionArity {
-        &EXACTLY_ZERO
-    }
-
-    fn call(&self, _args: Vec<Ast>, _env: &mut Environment) -> Result<Ast, LispError> {
+const LISP_READ_LINE: LispBuiltin = LispBuiltin {
+    arity: exactly_zero,
+    func: |_args, _env| {
         let mut buf = String::new();
         std::io::stdin()
             .read_line(&mut buf)
@@ -273,18 +258,12 @@ impl LispCallable for LispReadLine {
         // TODO: This might break compatibility with windows
         buf.pop(); // Remove trailing '\n'
         Ok(Ast::Atom(LispAtom::String(buf)))
-    }
-}
+    },
+};
 
-#[derive(Debug, Clone)]
-struct LispEqual;
-
-impl LispCallable for LispEqual {
-    fn arity(&self) -> &FunctionArity {
-        &AT_LEAST_TWO
-    }
-
-    fn call(&self, args: Vec<Ast>, _env: &mut Environment) -> Result<Ast, LispError> {
+const LISP_EQUAL: LispBuiltin = LispBuiltin {
+    arity: at_least_two,
+    func: |args, _env| {
         let mut iter = args.into_iter();
         let first = iter.next().ok_or(LispError::BadArity)?;
         for arg in iter {
@@ -294,18 +273,12 @@ impl LispCallable for LispEqual {
         }
 
         Ok(Ast::Atom(LispAtom::Bool(true)))
-    }
-}
+    },
+};
 
-#[derive(Debug, Clone)]
-struct LispGT;
-
-impl LispCallable for LispGT {
-    fn arity(&self) -> &FunctionArity {
-        &AT_LEAST_TWO
-    }
-
-    fn call(&self, args: Vec<Ast>, _env: &mut Environment) -> Result<Ast, LispError> {
+const LISP_GT: LispBuiltin = LispBuiltin {
+    arity: at_least_two,
+    func: |args, _env| {
         let nums = to_list_of_floats(args)?;
         let mut result = true;
         for i in 0..nums.len() - 1 {
@@ -313,18 +286,12 @@ impl LispCallable for LispGT {
         }
 
         Ok(Ast::Atom(LispAtom::Bool(result)))
-    }
-}
+    },
+};
 
-#[derive(Debug, Clone)]
-struct LispGE;
-
-impl LispCallable for LispGE {
-    fn arity(&self) -> &FunctionArity {
-        &AT_LEAST_TWO
-    }
-
-    fn call(&self, args: Vec<Ast>, _env: &mut Environment) -> Result<Ast, LispError> {
+const LISP_GE: LispBuiltin = LispBuiltin {
+    arity: at_least_two,
+    func: |args, _env| {
         let nums = to_list_of_floats(args)?;
         let mut result = true;
         for i in 0..nums.len() - 1 {
@@ -332,18 +299,12 @@ impl LispCallable for LispGE {
         }
 
         Ok(Ast::Atom(LispAtom::Bool(result)))
-    }
-}
+    },
+};
 
-#[derive(Debug, Clone)]
-struct LispLT;
-
-impl LispCallable for LispLT {
-    fn arity(&self) -> &FunctionArity {
-        &AT_LEAST_TWO
-    }
-
-    fn call(&self, args: Vec<Ast>, _env: &mut Environment) -> Result<Ast, LispError> {
+const LISP_LT: LispBuiltin = LispBuiltin {
+    arity: at_least_two,
+    func: |args, _env| {
         let nums = to_list_of_floats(args)?;
         let mut result = true;
         for i in 0..nums.len() - 1 {
@@ -351,18 +312,12 @@ impl LispCallable for LispLT {
         }
 
         Ok(Ast::Atom(LispAtom::Bool(result)))
-    }
-}
+    },
+};
 
-#[derive(Debug, Clone)]
-struct LispLE;
-
-impl LispCallable for LispLE {
-    fn arity(&self) -> &FunctionArity {
-        &AT_LEAST_TWO
-    }
-
-    fn call(&self, args: Vec<Ast>, _env: &mut Environment) -> Result<Ast, LispError> {
+const LISP_LE: LispBuiltin = LispBuiltin {
+    arity: at_least_two,
+    func: |args, _env| {
         let nums = to_list_of_floats(args)?;
         let mut result = true;
         for i in 0..nums.len() - 1 {
@@ -370,45 +325,25 @@ impl LispCallable for LispLE {
         }
 
         Ok(Ast::Atom(LispAtom::Bool(result)))
-    }
-}
+    },
+};
 
-#[derive(Debug, Clone)]
-struct LispList;
+const LISP_LIST: LispBuiltin = LispBuiltin {
+    arity: at_least_zero,
+    func: |args, _env| Ok(Ast::List(args)),
+};
 
-impl LispCallable for LispList {
-    fn arity(&self) -> &FunctionArity {
-        &AT_LEAST_ZERO
-    }
-
-    fn call(&self, args: Vec<Ast>, _env: &mut Environment) -> Result<Ast, LispError> {
-        Ok(Ast::List(args))
-    }
-}
-
-#[derive(Debug, Clone)]
-struct LispIsList;
-
-impl LispCallable for LispIsList {
-    fn arity(&self) -> &FunctionArity {
-        &EXACTLY_ONE
-    }
-
-    fn call(&self, args: Vec<Ast>, _env: &mut Environment) -> Result<Ast, LispError> {
+const LISP_IS_LIST: LispBuiltin = LispBuiltin {
+    arity: exactly_one,
+    func: |args, _env| {
         let is_list = matches!(get_first(&args)?, Ast::List(_));
         Ok(Ast::Atom(LispAtom::Bool(is_list)))
-    }
-}
+    },
+};
 
-#[derive(Debug, Clone)]
-struct LispIsEmpty;
-
-impl LispCallable for LispIsEmpty {
-    fn arity(&self) -> &FunctionArity {
-        &EXACTLY_ONE
-    }
-
-    fn call(&self, args: Vec<Ast>, _env: &mut Environment) -> Result<Ast, LispError> {
+const LISP_IS_EMPTY: LispBuiltin = LispBuiltin {
+    arity: exactly_one,
+    func: |args, _env| {
         let arg = get_first(&args)?;
         let is_empty = match arg {
             Ast::List(items) => !items.is_empty(),
@@ -416,18 +351,12 @@ impl LispCallable for LispIsEmpty {
         };
 
         Ok(Ast::Atom(LispAtom::Bool(is_empty)))
-    }
-}
+    },
+};
 
-#[derive(Debug, Clone)]
-struct LispCount;
-
-impl LispCallable for LispCount {
-    fn arity(&self) -> &FunctionArity {
-        &EXACTLY_ONE
-    }
-
-    fn call(&self, args: Vec<Ast>, _env: &mut Environment) -> Result<Ast, LispError> {
+const LISP_COUNT: LispBuiltin = LispBuiltin {
+    arity: exactly_one,
+    func: |args, _env| {
         let arg = get_first(&args)?;
         let length = match arg {
             Ast::List(items) => items.len(),
@@ -435,19 +364,13 @@ impl LispCallable for LispCount {
         };
 
         Ok(Ast::Atom(LispAtom::Float(length as f64)))
-    }
-}
+    },
+};
 
-#[derive(Debug, Clone)]
-struct LispGetType;
-
-impl LispCallable for LispGetType {
-    fn arity(&self) -> &FunctionArity {
-        &EXACTLY_ONE
-    }
-
-    fn call(&self, args: Vec<Ast>, _env: &mut Environment) -> Result<Ast, LispError> {
+const LISP_GET_TYPE: LispBuiltin = LispBuiltin {
+    arity: exactly_one,
+    func: |args, _env| {
         let arg = get_first(&args)?;
         Ok(Ast::Type(LispType::from(arg)))
-    }
-}
+    },
+};

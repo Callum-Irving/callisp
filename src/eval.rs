@@ -39,8 +39,11 @@ fn eval_list(list: Vec<Ast>, env: &mut Environment) -> Result<Ast, LispError> {
         .collect::<Result<_, LispError>>()?;
 
     if let Ast::Function(func) = func {
-        func.arity().check_arity(args.len())?;
-        func.call(args, env)
+        if func.arity(args.len()) {
+            func.call(args, env)
+        } else {
+            Err(LispError::BadArity)
+        }
     } else {
         Err(LispError::TypeError)
     }

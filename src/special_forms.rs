@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 
-use crate::ast::{Ast, FunctionArity, LispAtom, LispLambda};
+use crate::ast::{Ast, LispAtom, LispLambda};
 use crate::env::Environment;
 use crate::error::LispError;
 use crate::eval;
@@ -88,7 +88,7 @@ pub fn lambda(args: Vec<Ast>, _env: &mut Environment) -> Result<Ast, LispError> 
 
     let body = args.next().ok_or(LispError::BadArity)?;
 
-    let lambda = LispLambda::new(FunctionArity::Exactly(bindings.len()), bindings, body);
+    let lambda = LispLambda::new(bindings.len(), bindings, body);
 
     Ok(Ast::Function(Box::new(lambda)))
 }
