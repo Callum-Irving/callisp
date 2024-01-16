@@ -3,7 +3,6 @@
 ![Build](https://img.shields.io/github/actions/workflow/status/Callum-Irving/callisp/rust.yml?style=flat-square)
 [![Crates.io](https://img.shields.io/crates/v/callisp?style=flat-square)](https://crates.io/crates/callisp)
 [![Docs](https://img.shields.io/docsrs/callisp?style=flat-square)](https://docs.rs/callisp/latest/callisp/)
-![Lines of code](https://img.shields.io/tokei/lines/github/Callum-Irving/callisp?style=flat-square)
 ![Files](https://img.shields.io/github/directory-file-count/Callum-Irving/callisp/src?style=flat-square)
 ![License](https://img.shields.io/crates/l/callisp?style=flat-square)
 
