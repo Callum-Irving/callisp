@@ -1,6 +1,6 @@
 //! Contains parser created using the nom crate.
 
-use crate::ast;
+use crate::ast::{Ast, LispAtom};
 
 use nom::branch::alt;
 use nom::bytes::complete::{tag, take_while};
@@ -12,7 +12,10 @@ use nom::IResult;
 
 /// Parse a lisp expression. input must only contain the expression and nothing else (except for
 /// whitespace). Used only in REPL.
-pub fn parse_complete_expr(input: &str) -> IResult<&str, ast::Ast> {
+pub fn parse_complete_expr(input: &str) -> IResult<&str, Ast> {
+    if input.is_empty() {
+        return IResult::Ok((input, Ast::Unspecified));
+    }
     let (remaining, ast) = parse_expr(input)?;
     if !remaining.is_empty() {
         IResult::Err(nom::Err::Error(nom::error::Error {
@@ -25,16 +28,15 @@ pub fn parse_complete_expr(input: &str) -> IResult<&str, ast::Ast> {
 }
 
 /// Parse a lisp expression.
-pub fn parse_expr(input: &str) -> IResult<&str, ast::Ast> {
+pub fn parse_expr(input: &str) -> IResult<&str, Ast> {
     // skip whitespace
     // if first char == '(', call parse_list
     // if first char =='[', parse vec
     // else parse atom
-
     preceded(multispace0, alt((parse_list, parse_atom)))(input)
 }
 
-fn parse_list(input: &str) -> IResult<&str, ast::Ast> {
+fn parse_list(input: &str) -> IResult<&str, Ast> {
     // whitespace separated expressions
     map(
         delimited(
@@ -42,11 +44,11 @@ fn parse_list(input: &str) -> IResult<&str, ast::Ast> {
             separated_list0(multispace1, parse_expr),
             preceded(multispace0, char(')')),
         ),
-        ast::Ast::List,
+        Ast::List,
     )(input)
 }
 
-fn parse_atom(input: &str) -> IResult<&str, ast::Ast> {
+fn parse_atom(input: &str) -> IResult<&str, Ast> {
     alt((
         parse_float,
         parse_int,
@@ -64,7 +66,7 @@ fn recognize_float_exponent(input: &str) -> IResult<&str, &str> {
     )))(input)
 }
 
-fn parse_float(input: &str) -> IResult<&str, ast::Ast> {
+fn parse_float(input: &str) -> IResult<&str, Ast> {
     let res: IResult<&str, &str> = recognize(tuple((
         opt(alt((char('+'), char('-')))),
         digit1,
@@ -78,36 +80,36 @@ fn parse_float(input: &str) -> IResult<&str, ast::Ast> {
     )))(input);
     let (remaining, num_str) = res?;
     let num = num_str.parse::<f64>().unwrap();
-    Ok((remaining, ast::Ast::Atom(ast::LispAtom::Float(num))))
+    Ok((remaining, Ast::Atom(LispAtom::Float(num))))
 }
 
-fn parse_int(input: &str) -> IResult<&str, ast::Ast> {
+fn parse_int(input: &str) -> IResult<&str, Ast> {
     let (remaining, num_str) = recognize(tuple((opt(alt((char('+'), char('-')))), digit1)))(input)?;
     let num = num_str.parse::<i64>().unwrap();
-    Ok((remaining, ast::Ast::Atom(ast::LispAtom::Int(num))))
+    Ok((remaining, Ast::Atom(LispAtom::Int(num))))
 }
 
-fn parse_string(input: &str) -> IResult<&str, ast::Ast> {
+fn parse_string(input: &str) -> IResult<&str, Ast> {
     map(
         delimited(char('"'), take_while(|c| c != '"'), char('"')),
-        |s: &str| ast::Ast::Atom(ast::LispAtom::String(s.to_string())),
+        |s: &str| Ast::Atom(LispAtom::String(s.to_string())),
     )(input)
 }
 
-fn parse_bool(input: &str) -> IResult<&str, ast::Ast> {
+fn parse_bool(input: &str) -> IResult<&str, Ast> {
     map(
         alt((map(tag("true"), |_| true), map(tag("false"), |_| false))),
-        |b: bool| ast::Ast::Atom(ast::LispAtom::Bool(b)),
+        |b: bool| Ast::Atom(LispAtom::Bool(b)),
     )(input)
 }
 
-fn parse_symbol(input: &str) -> IResult<&str, ast::Ast> {
+fn parse_symbol(input: &str) -> IResult<&str, Ast> {
     map(
         recognize(tuple((
             satisfy(|c| is_symbol_character(c) && !c.is_ascii_digit()),
             take_while(is_symbol_character),
         ))),
-        |s: &str| ast::Ast::Atom(ast::LispAtom::Symbol(s.to_string())),
+        |s: &str| Ast::Atom(LispAtom::Symbol(s.to_string())),
     )(input)
 }
 
@@ -124,27 +126,27 @@ mod tests {
         parse_symbol("1").expect_err("parsed '1' as symbol");
 
         let (_, ast) = parse_symbol("a123-five?").expect("parse symbol failed");
-        let expected = ast::Ast::Atom(ast::LispAtom::Symbol("a123-five?".to_string()));
+        let expected = Ast::Atom(LispAtom::Symbol("a123-five?".to_string()));
         assert_eq!(ast, expected);
     }
 
     #[test]
     fn parse_atom_works() {
         let (_, ast) = parse_atom("1").expect("parse atom failed");
-        let expected = ast::Ast::Atom(ast::LispAtom::Int(1));
+        let expected = Ast::Atom(LispAtom::Int(1));
         assert_eq!(ast, expected);
 
         let (_, ast) = parse_atom("1E10").expect("parse atom failed");
-        let expected = ast::Ast::Atom(ast::LispAtom::Float(1E10));
+        let expected = Ast::Atom(LispAtom::Float(1E10));
         assert_eq!(ast, expected);
     }
 
     #[test]
     fn parse_list_works() {
         let (_, ast) = parse_list("(1 2\n)").expect("parse list failed");
-        let expected = ast::Ast::List(vec![
-            ast::Ast::Atom(ast::LispAtom::Int(1)),
-            ast::Ast::Atom(ast::LispAtom::Int(2)),
+        let expected = Ast::List(vec![
+            Ast::Atom(LispAtom::Int(1)),
+            Ast::Atom(LispAtom::Int(2)),
         ]);
         assert_eq!(ast, expected);
     }
@@ -152,12 +154,12 @@ mod tests {
     #[test]
     fn parse_expr_works() {
         let (_, ast) = parse_expr(" (one   two (f\n3)\n)").expect("parse expr failed");
-        let expected = ast::Ast::List(vec![
-            ast::Ast::Atom(ast::LispAtom::Symbol("one".to_string())),
-            ast::Ast::Atom(ast::LispAtom::Symbol("two".to_string())),
-            ast::Ast::List(vec![
-                ast::Ast::Atom(ast::LispAtom::Symbol("f".to_string())),
-                ast::Ast::Atom(ast::LispAtom::Int(3)),
+        let expected = Ast::List(vec![
+            Ast::Atom(LispAtom::Symbol("one".to_string())),
+            Ast::Atom(LispAtom::Symbol("two".to_string())),
+            Ast::List(vec![
+                Ast::Atom(LispAtom::Symbol("f".to_string())),
+                Ast::Atom(LispAtom::Int(3)),
             ]),
         ]);
         assert_eq!(ast, expected);

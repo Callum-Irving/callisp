@@ -43,6 +43,7 @@ pub(crate) fn builtins_hashmap() -> HashMap<String, Ast> {
         "empty?" => LISP_IS_EMPTY,
         "count" => LISP_COUNT,
         "type" => LISP_GET_TYPE,
+        "do" => LISP_DO,
     }
 }
 
@@ -388,4 +389,9 @@ const LISP_GET_TYPE: LispBuiltin = LispBuiltin {
         let arg = get_first(&args)?;
         Ok(Ast::Type(LispType::from(arg)))
     },
+};
+
+const LISP_DO: LispBuiltin = LispBuiltin {
+    arity: at_least_one,
+    func: |args, _env| args.into_iter().last().ok_or(LispError::BadArity),
 };
